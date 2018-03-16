@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27130.2027
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "hashstream.bitcoin-node-lib", "hashstream.bitcoin-node\hashstream.bitcoin-node-lib.csproj", "{90578E8C-E3AB-444D-AB73-B4D67C24945F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "hashstream.bitcoin-lib", "hashstream.bitcoin-lib\hashstream.bitcoin-lib.csproj", "{9F0B83A9-8C1F-4576-BB6B-2C9DBD3C4F76}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "hashstream.bitcoin-node-test", "hashstream.bitcoin-node-test\hashstream.bitcoin-node-test.csproj", "{01CE994E-5E12-4BD4-83E2-5ADC9364D64A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{90578E8C-E3AB-444D-AB73-B4D67C24945F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{90578E8C-E3AB-444D-AB73-B4D67C24945F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{90578E8C-E3AB-444D-AB73-B4D67C24945F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{90578E8C-E3AB-444D-AB73-B4D67C24945F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9F0B83A9-8C1F-4576-BB6B-2C9DBD3C4F76}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9F0B83A9-8C1F-4576-BB6B-2C9DBD3C4F76}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9F0B83A9-8C1F-4576-BB6B-2C9DBD3C4F76}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9F0B83A9-8C1F-4576-BB6B-2C9DBD3C4F76}.Release|Any CPU.Build.0 = Release|Any CPU
+		{01CE994E-5E12-4BD4-83E2-5ADC9364D64A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{01CE994E-5E12-4BD4-83E2-5ADC9364D64A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{01CE994E-5E12-4BD4-83E2-5ADC9364D64A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{01CE994E-5E12-4BD4-83E2-5ADC9364D64A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {697A6017-A2C1-45FE-B6D5-8250B7680FDE}
+	EndGlobalSection
+EndGlobal

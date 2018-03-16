@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
+    <AssemblyName>hashstream.bitcoin-node-lib</AssemblyName>
+    <RootNamespace>hashstream.bitcoin_node_lib</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="StackExchange.Redis" Version="1.2.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\hashstream.bitcoin-lib\hashstream.bitcoin-lib.csproj" />
+  </ItemGroup>
+
+</Project>
