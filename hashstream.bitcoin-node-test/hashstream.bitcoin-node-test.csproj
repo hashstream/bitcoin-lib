@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\hashstream.bitcoin-node\hashstream.bitcoin-node-lib.csproj" />
+    <ProjectReference Include="..\hashstream.bitcoin-node\hashstream.bitcoin-node.csproj" />
   </ItemGroup>
 
 </Project>

@@ -4,21 +4,18 @@ using System.Text;
 
 namespace hashstream.bitcoin_lib.P2P
 {
-    public class Ping : IStreamable, ICommand
+    public class MemPool : IStreamable, ICommand
     {
-        public UInt64 Nonce { get; set; }
-
-        public string Command => "ping";
+        public string Command => "mempool";
 
         public void ReadFromPayload(byte[] data, int offset)
         {
-            Nonce = BitConverter.ToUInt64(data, offset);
+
         }
 
         public byte[] ToArray()
         {
-            return BitConverter.GetBytes(Nonce);
+            return new byte[0];
         }
-
     }
 }

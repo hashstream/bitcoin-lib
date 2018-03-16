@@ -1,4 +1,5 @@
-﻿using System;
+﻿using hashstream.bitcoin_lib.BlockChain;
+using System;
 
 namespace hashstream.bitcoin_lib.P2P
 {
@@ -13,8 +14,6 @@ namespace hashstream.bitcoin_lib.P2P
     {
         public InventoryType Type { get; set; }
         public Hash Hash { get; set; }
-
-        public string Command => null;
 
         public void ReadFromPayload(byte[] data, int offset)
         {

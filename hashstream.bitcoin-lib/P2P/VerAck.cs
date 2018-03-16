@@ -1,6 +1,6 @@
 ﻿namespace hashstream.bitcoin_lib.P2P
 {
-    public class VerAck : IStreamable
+    public class VerAck : IStreamable, ICommand
     {
         public string Command => "verack";
 

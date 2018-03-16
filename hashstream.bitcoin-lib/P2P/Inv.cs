@@ -1,10 +1,11 @@
-﻿using System;
+using hashstream.bitcoin_lib.BlockChain;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace hashstream.bitcoin_lib.P2P
 {
-    public class Inv : IStreamable
+    public class Inv : IStreamable, ICommand
     {
         public VarInt Count { get; set; }
         public Inventory[] Inventory { get; set; }
@@ -15,10 +16,10 @@ namespace hashstream.bitcoin_lib.P2P
         {
             Count = new VarInt(0);
             Count.ReadFromPayload(data, offset);
-            Inventory = new Inventory[(int)Count];
+            Inventory = new Inventory[Count];
 
             //read all
-            for (var x = 0; x < (int)Count; x++)
+            for (var x = 0; x < Count; x++)
             {
                 var ni = new Inventory();
                 ni.ReadFromPayload(data, offset + Count.Size + (36 * x));
@@ -33,7 +34,7 @@ namespace hashstream.bitcoin_lib.P2P
             var c = Count.ToArray();
             Buffer.BlockCopy(c, 0, ret, 0, Count.Size);
 
-            for (var x = 0; x < (int)Count; x++)
+            for (var x = 0; x < Count; x++)
             {
                 var ni = Inventory[x].ToArray();
                 Buffer.BlockCopy(ni, 0, ret, Count.Size + (36 * x), ni.Length);

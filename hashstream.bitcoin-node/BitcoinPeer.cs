@@ -157,7 +157,7 @@ namespace hashstream.bitcoin_node_lib
             }
         }
 
-        public async Task WriteMessage(IStreamable msg)
+        public async Task WriteMessage<T>(T msg) where T : IStreamable, ICommand
         {
             var dt = MessageHeader.ToCommand(msg);
             await Stream.WriteAsync(dt, 0, dt.Length);

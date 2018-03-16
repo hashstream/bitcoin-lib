@@ -1,4 +1,5 @@
-﻿using System;
+using hashstream.bitcoin_lib.BlockChain;
+using System;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -8,59 +9,6 @@ using System.Threading.Tasks;
 
 namespace hashstream.bitcoin_lib.P2P
 {
-    
-    public class MemPool
-    {
-
-    }
-
-    
-
-    public class MerkleBlock : IStreamable
-    {
-        public BlockHeader BlockHeader { get; set; }
-        public UInt32 Transactions { get; set; }
-        public VarInt HashCount { get; set; }
-        public Hash[] Hashes { get; set; }
-        public VarInt FlagByteCount { get; set; }
-        public byte[] Flags { get; set; }
-
-        public string Command => null;
-
-        public void ReadFromPayload(byte[] data, int offset)
-        {
-            
-        }
-
-        public byte[] ToArray()
-        {
-            throw new NotImplementedException();
-        }
-    }
-
-    public class NotFound
-    {
-
-    }
-
-    public class Tx
-    {
-
-    }
-
-    public class Addr
-    {
-        public UInt64 IpAddresses { get; set; }
-        public BitcoinIP[] Ips { get; set; }
-    }
-
-    public class BitcoinIP
-    {
-        public UInt32 Time { get; set; }
-        public UInt64 Services { get; set; }
-        public IPAddress Ip { get; set; }
-        public UInt16 Port { get; set; }
-    }
 
     public class Alert
     {

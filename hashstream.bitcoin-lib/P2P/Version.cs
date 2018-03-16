@@ -1,10 +1,11 @@
-﻿using System;
+using hashstream.bitcoin_lib.BlockChain;
+using System;
 using System.Net;
 using System.Text;
 
 namespace hashstream.bitcoin_lib.P2P
 {
-    public class Version : IStreamable
+    public class Version : IStreamable, ICommand
     {
         public string Command => "version";
 
@@ -53,14 +54,14 @@ namespace hashstream.bitcoin_lib.P2P
             UserAgentLength.ReadFromPayload(data, offset + 80);
 
             var noffset = offset + 80 + UserAgentLength.Size;
-            UserAgent = Encoding.ASCII.GetString(data, noffset, (int)UserAgentLength);
-            StartHeight = BitConverter.ToUInt32(data, noffset + (int)UserAgentLength);
-            Relay = BitConverter.ToBoolean(data, noffset + (int)UserAgentLength + 4);
+            UserAgent = Encoding.ASCII.GetString(data, noffset, UserAgentLength);
+            StartHeight = BitConverter.ToUInt32(data, noffset + UserAgentLength);
+            Relay = BitConverter.ToBoolean(data, noffset + UserAgentLength + 4);
         }
 
         public byte[] ToArray()
         {
-            var pl = new byte[85 + UserAgentLength.Size + (int)UserAgentLength];
+            var pl = new byte[85 + UserAgentLength.Size + UserAgentLength];
 
             var hv = BitConverter.GetBytes(HighestVersion);
             Buffer.BlockCopy(hv, 0, pl, 0, hv.Length);
@@ -101,7 +102,7 @@ namespace hashstream.bitcoin_lib.P2P
             Buffer.BlockCopy(ua, 0, pl, 80 + UserAgentLength.Size, ua.Length);
 
             var sh = BitConverter.GetBytes(StartHeight);
-            Buffer.BlockCopy(sh, 0, pl, 80 + UserAgentLength.Size + (int)UserAgentLength, sh.Length);
+            Buffer.BlockCopy(sh, 0, pl, 80 + UserAgentLength.Size + UserAgentLength, sh.Length);
 
             pl[pl.Length-1] = Relay ? (byte)0x01 : (byte)0x00;
 

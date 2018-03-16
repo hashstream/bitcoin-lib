@@ -5,14 +5,14 @@ using System.Text;
 
 namespace hashstream.bitcoin_lib.P2P
 {
-    public class MessageHeader : IStreamable
+    public class MessageHeader : IStreamable, ICommand
     {
         public uint Magic { get; set; } = 0xf9beb4d9;
         public string Command { get; set; }
         public uint PayloadSize { get; set; }
         public byte[] Checksum { get; set; }
 
-        public static byte[] ToCommand(IStreamable msg)
+        public static byte[] ToCommand<T>(T msg) where T : ICommand, IStreamable
         {
             using (var ms = new MemoryStream())
             {

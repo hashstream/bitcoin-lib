@@ -1,9 +1,9 @@
-﻿using hashstream.bitcoin_lib.P2P;
+using hashstream.bitcoin_lib.P2P;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace hashstream.bitcoin_lib
+namespace hashstream.bitcoin_lib.BlockChain
 {
     public class BlockHeader : IStreamable
     {
@@ -14,7 +14,7 @@ namespace hashstream.bitcoin_lib
         public UInt32 Target { get; set; }
         public UInt32 Nonce { get; set; }
 
-        public string Command => null;
+        public int Size => 80;
 
         public void ReadFromPayload(byte[] data, int offset)
         {
@@ -30,7 +30,7 @@ namespace hashstream.bitcoin_lib
 
         public byte[] ToArray()
         {
-            var ret = new byte[80];
+            var ret = new byte[Size];
 
             var v = BitConverter.GetBytes(Version);
             Buffer.BlockCopy(v, 0, ret, 0, v.Length);

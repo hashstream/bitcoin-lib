@@ -1,16 +1,19 @@
-﻿using System;
+﻿using hashstream.bitcoin_lib.P2P;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace hashstream.bitcoin_lib
+namespace hashstream.bitcoin_lib.BlockChain
 {
-    public class Hash
+    public class Hash : IStreamable
     {
         public byte[] HashBytes { get; set; }
 
+        public int Size => 32;
+
         public Hash()
         {
-            HashBytes = new byte[32];
+            HashBytes = new byte[Size];
         }
 
         public override string ToString()

@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp2.0</TargetFramework>
-    <AssemblyName>hashstream.bitcoin-node-lib</AssemblyName>
-    <RootNamespace>hashstream.bitcoin_node_lib</RootNamespace>
+    <AssemblyName>hashstream.bitcoin-node</AssemblyName>
+    <RootNamespace>hashstream.bitcoin_node</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

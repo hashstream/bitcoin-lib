@@ -1,16 +1,15 @@
-﻿using System;
+﻿using hashstream.bitcoin_lib.P2P;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace hashstream.bitcoin_lib.P2P
+namespace hashstream.bitcoin_lib.BlockChain
 {
     public class VarInt : IStreamable, IEquatable<UInt64>
     {
         public UInt64 Value { get; set; }
-        public int Size { get; set; }
-
-        public string Command => null;
+        public int Size { get; private set; }
 
         public VarInt(UInt64 v)
         {
@@ -100,7 +99,7 @@ namespace hashstream.bitcoin_lib.P2P
             }
         }
 
-        public static explicit operator int(VarInt v)
+        public static implicit operator int(VarInt v)
         {
             return (int)v.Value;
         }
