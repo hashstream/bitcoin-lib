@@ -9,9 +9,30 @@ namespace hashstream.bitcoin_node_test
     {
         static void Main(string[] args)
         {
-            var node = new BitcoinPeer("157.13.61.147", 8333);
-            node.Start().Wait();
+            var node = new BitcoinNode();
+            node.OnLog += Node_OnLog;
+            node.OnPeerConnected += Node_OnPeerConnected;
+            node.OnPeerDisconnected += Node_OnPeerDisconnected;
+            node.Start();
+
+            node.AddPeer(new IPEndPoint(IPAddress.Parse("94.23.59.197"), 8333));
+            
             Console.ReadKey();
+        }
+
+        private static void Node_OnPeerDisconnected(BitcoinNodePeer np)
+        {
+            throw new NotImplementedException();
+        }
+
+        private static void Node_OnPeerConnected(BitcoinNodePeer np)
+        {
+            throw new NotImplementedException();
+        }
+
+        private static void Node_OnLog(string msg)
+        {
+            Console.WriteLine(msg);
         }
     }
 }

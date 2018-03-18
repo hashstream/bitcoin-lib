@@ -6,7 +6,7 @@ namespace hashstream.bitcoin_lib.P2P
 {
     public class GetBlocks : IStreamable, ICommand
     {
-        public UInt32 Version { get; set; } = 700015;
+        public UInt32 Version { get; set; } = Consensus.Version;
         public VarInt HashCount { get; set; }
         public Hash[] Hashes { get; set; }
         public Hash StopHash { get; set; }

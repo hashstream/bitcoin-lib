@@ -14,27 +14,34 @@ namespace hashstream.bitcoin_lib.P2P
 
         public static byte[] ToCommand<T>(T msg) where T : ICommand, IStreamable
         {
-            using (var ms = new MemoryStream())
+            if (msg != null)
             {
-                var mp = msg.ToArray();
-                var header = new MessageHeader();
-                header.Command = msg.Command;
-                header.PayloadSize = (uint)mp.Length;
-
-                //create the checksum of the payload
-                using (var sha = SHA256.Create())
+                using (var ms = new MemoryStream())
                 {
-                    var h1 = sha.ComputeHash(mp);
-                    var h2 = sha.ComputeHash(h1);
+                    var mp = msg.ToArray();
+                    var header = new MessageHeader();
+                    header.Command = msg.Command;
+                    header.PayloadSize = (uint)mp.Length;
 
-                    header.Checksum = new byte[] { h2[0], h2[1], h2[2], h2[3] };
+                    //create the checksum of the payload
+                    using (var sha = SHA256.Create())
+                    {
+                        var h1 = sha.ComputeHash(mp);
+                        var h2 = sha.ComputeHash(h1);
+
+                        header.Checksum = new byte[] { h2[0], h2[1], h2[2], h2[3] };
+                    }
+
+                    var hp = header.ToArray();
+                    ms.Write(hp, 0, hp.Length);
+                    ms.Write(mp, 0, mp.Length);
+
+                    return ms.ToArray();
                 }
-
-                var hp = header.ToArray();
-                ms.Write(hp, 0, hp.Length);
-                ms.Write(mp, 0, mp.Length);
-
-                return ms.ToArray();
+            }
+            else
+            {
+                return null;
             }
         }
 

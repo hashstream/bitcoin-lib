@@ -9,7 +9,7 @@ namespace hashstream.bitcoin_lib.P2P
     {
         public string Command => "version";
 
-        public UInt32 HighestVersion { get; set; }
+        public UInt32 HighestVersion { get; set; } = Consensus.Version;
         public UInt64 Services { get; set; }
         public UInt64 Timestamp { get; set; }
         public UInt64 RecvServices { get; set; }

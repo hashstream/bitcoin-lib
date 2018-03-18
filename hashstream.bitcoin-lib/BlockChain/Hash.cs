@@ -16,6 +16,26 @@ namespace hashstream.bitcoin_lib.BlockChain
             HashBytes = new byte[Size];
         }
 
+        public Hash(byte[] h)
+        {
+            if(h.Length != Size)
+            {
+                throw new Exception($"Invalid hash length {h.Length} != {Size}");
+            }
+
+            HashBytes = h;
+        }
+
+        public Hash(string h)
+        {
+            if(h.Length != Size * 2)
+            {
+                throw new Exception($"Invalid hash length {h.Length} != {Size}");
+            }
+
+            HashBytes = h.FromHex();
+        }
+
         public override string ToString()
         {
             return BitConverter.ToString(HashBytes).Replace("-", string.Empty).ToLower();
@@ -29,6 +49,11 @@ namespace hashstream.bitcoin_lib.BlockChain
         public byte[] ToArray()
         {
             return HashBytes;
+        }
+
+        public static implicit operator Hash(byte[] b)
+        {
+            return new Hash(b);
         }
     }
 }
