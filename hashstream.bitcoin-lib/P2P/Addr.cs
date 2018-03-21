@@ -24,6 +24,7 @@ namespace hashstream.bitcoin_lib.P2P
                 var ip = new IP();
                 ip.ReadFromPayload(data, ipOffset);
                 Ips[x] = ip;
+                ipOffset += ip.Size;
             }
         }
 

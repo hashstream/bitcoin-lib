@@ -1,8 +1,6 @@
 ﻿using hashstream.bitcoin_lib.P2P;
 using System;
-using System.Collections.Generic;
 using System.Net;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace hashstream.bitcoin_node_lib

@@ -42,6 +42,9 @@ namespace hashstream.bitcoin_lib
 
             read_more:
             var rlen = await s.ReadAsync(buf, offset + i_offset, count - i_offset);
+            if (rlen == 0)
+                return;
+
             if(i_offset + rlen < count - i_offset)
             {
                 i_offset += rlen;

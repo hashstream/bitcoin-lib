@@ -23,7 +23,10 @@ namespace hashstream.bitcoin_lib.P2P
             Buffer.BlockCopy(data, offset + 12, ip, 0, ip.Length);
             Ip = new IPAddress(ip);
 
-            Port = BitConverter.ToUInt16(data, offset + 28);
+            var pt = new byte[2];
+            Buffer.BlockCopy(data, offset + 28, pt, 0, pt.Length);
+            Array.Reverse(pt);
+            Port = BitConverter.ToUInt16(pt, 0);
         }
 
         public byte[] ToArray()

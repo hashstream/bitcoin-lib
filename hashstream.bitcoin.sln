@@ -1,13 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.27130.2027
+VisualStudioVersion = 15.0.27130.2024
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "hashstream.bitcoin-lib", "hashstream.bitcoin-lib\hashstream.bitcoin-lib.csproj", "{9F0B83A9-8C1F-4576-BB6B-2C9DBD3C4F76}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "hashstream.bitcoin-node-test", "hashstream.bitcoin-node-test\hashstream.bitcoin-node-test.csproj", "{01CE994E-5E12-4BD4-83E2-5ADC9364D64A}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "hashstream.bitcoin-node", "hashstream.bitcoin-node\hashstream.bitcoin-node.csproj", "{8543038A-F5F7-4429-9F27-A8A36ADB3DC0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "hashstream.nodes", "hashstream.nodes\hashstream.nodes.csproj", "{A299C311-96FE-49C3-BA69-E27D02D760DD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,6 +29,10 @@ Global
 		{8543038A-F5F7-4429-9F27-A8A36ADB3DC0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8543038A-F5F7-4429-9F27-A8A36ADB3DC0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8543038A-F5F7-4429-9F27-A8A36ADB3DC0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A299C311-96FE-49C3-BA69-E27D02D760DD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A299C311-96FE-49C3-BA69-E27D02D760DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A299C311-96FE-49C3-BA69-E27D02D760DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A299C311-96FE-49C3-BA69-E27D02D760DD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

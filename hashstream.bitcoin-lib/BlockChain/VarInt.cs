@@ -65,6 +65,9 @@ namespace hashstream.bitcoin_lib.BlockChain
             {
                 Size = 9;
                 Value = BitConverter.ToUInt64(header, offset + 1);
+            }else
+            {
+                Console.Write("FUCK");
             }
         }
 
