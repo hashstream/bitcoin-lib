@@ -1,32 +1,35 @@
 ﻿using hashstream.bitcoin_lib.P2P;
 using hashstream.bitcoin_node_lib;
+using MaxMind.GeoIP2;
 using StackExchange.Redis;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 
 namespace hashstream.nodes
 {
     public class NodeScraper
     {
-        private static int MaxPoll => 100;
+        private static int MaxPoll => 50;
 
-        private MaxMind.GeoIP2.DatabaseReader GeoIp { get; set; }
+        private DatabaseReader GeoIp { get; set; }
 
         private ConnectionMultiplexer Redis { get; set; }
 
-        private bitcoin_lib.P2P.Version Ver { get; set; }
-
         private bool Running { get; set; } = true;
 
-        private SemaphoreSlim ParallelTasks { get; set; } = new SemaphoreSlim(MaxPoll, MaxPoll);
+        private SemaphoreSlim NewNodeSemaphore { get; set; }
 
+        private BufferBlock<IPEndPoint> NewNodeQueue { get; set; } = new BufferBlock<IPEndPoint>();
+
+        private Task NewNodeWorkerTask { get; set; }
+        
         private static List<string> DNSSeeds { get; set; } = new List<string>()
         {
             "seed.bitcoin.sipa.be",
@@ -42,6 +45,130 @@ namespace hashstream.nodes
             ThreadPool.SetMinThreads(MaxPoll, 20);
             GeoIp = new MaxMind.GeoIP2.DatabaseReader("GeoLite2-City.mmdb");
             Redis = ConnectionMultiplexer.Connect("localhost");
+            NewNodeSemaphore = new SemaphoreSlim(MaxPoll, MaxPoll);
+        }
+
+        public async Task Run()
+        {
+            var db = Redis.GetDatabase();
+            //var sub = Redis.GetSubscriber();
+            //await sub.SubscribeAsync("hs:nodes:new-stream", NewNodeHandler);
+            NewNodeWorkerTask = NewNodeWorker();
+
+            if (!await db.KeyExistsAsync("hs:nodes:good-nodes"))
+            {
+                Console.WriteLine("First run.. checking seeds");
+                //get seeds
+                List<IPEndPoint> allIps = new List<IPEndPoint>();
+
+                foreach (var dseed in DNSSeeds)
+                {
+                    var ips = await Dns.GetHostAddressesAsync(dseed);
+                    if (ips != null && ips.Length > 0)
+                    {
+                        allIps.AddRange(ips.Select(a => new IPEndPoint(a.MapToIPv6(), 8333)));
+                    }
+                }
+
+                foreach (var n in allIps)
+                {
+                    NewNodeQueue.Post(n);
+                }
+
+                Console.WriteLine("First run complete.");
+            }
+
+            while (Running)
+            {
+                if (NewNodeQueue.Count < 100)
+                {
+                    var s = new SemaphoreSlim(MaxPoll, MaxPoll);
+                    Console.WriteLine("Scrape starting.");
+                    var nodes = await GetGoodNodes();
+
+                    foreach (var n in nodes)
+                    {
+                        await s.WaitAsync();
+                        await Task.Factory.StartNew(async () =>
+                        {
+                            var nn = new Node(Redis, (ip) => { NewNodeQueue.Post(ip); }, GeoIp, n);
+                            await nn.Connect();
+                            s.Release();
+                        });
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"Skipping poll to catch up on {NewNodeQueue.Count} new nodes");
+                }
+
+                Console.WriteLine("Scrape complete.");
+                await Task.Delay(TimeSpan.FromMinutes(5));
+            }
+        }
+
+        private void NewNodeHandler(RedisChannel arg1, RedisValue arg2)
+        {
+            var ep = ((byte[])arg2).ParseIP();
+
+            var nn = new Node(Redis, (ip) => { NewNodeQueue.Post(ip); }, GeoIp, ep);
+            if (!nn.IsBadNode().Result && !nn.IsGoodNode().Result) //exclude already known nodes
+            {
+                NewNodeSemaphore.Wait();
+                Console.WriteLine($"Checking new node {ep}");
+                Task.Factory.StartNew(async () =>
+                {
+                    await nn.Connect();
+                    NewNodeSemaphore.Release();
+                });
+            }
+        }
+
+        private async Task NewNodeWorker()
+        {
+            while (Running)
+            {
+                var ep = await NewNodeQueue.ReceiveAsync();
+
+                var nn = new Node(Redis, (ip) => { NewNodeQueue.Post(ip); }, GeoIp, ep);
+                if (!await nn.IsBadNode() && !await nn.IsGoodNode()) //exclude already known nodes
+                {
+                    await NewNodeSemaphore.WaitAsync();
+                    Console.WriteLine($"Checking new node {ep}");
+                    await Task.Factory.StartNew(async () =>
+                    {
+                        await nn.Connect();
+                        NewNodeSemaphore.Release();
+                    });
+                }
+            }
+        }
+
+        public async Task<List<IPEndPoint>> GetGoodNodes()
+        {
+            //hs:nodes:new-nodes
+            var db = Redis.GetDatabase();
+
+            var nodes = await db.SetMembersAsync("hs:nodes:good-nodes");
+            return nodes.Select(a => ((byte[])a).ParseIP()).ToList();
+        }
+    }
+
+    public class Node
+    {
+        public IPEndPoint IP { get; set; }
+        public DateTime LastSeen { get; set; }
+
+        private BitcoinPeer Peer { get; set; }
+        private IDatabase db { get; set; }
+        private DatabaseReader GeoIp { get; set; }
+        private Action<IPEndPoint> QueueNewNode { get; set; }
+        private bitcoin_lib.P2P.Version Ver { get; set; }
+        private bool GotVersion { get; set; }
+
+        public Node(ConnectionMultiplexer redis, Action<IPEndPoint> nq, DatabaseReader geo, IPEndPoint ip)
+        {
+            IP = ip;
 
             Ver = new bitcoin_lib.P2P.Version($"https://nodes.hashstream.net/");
             var nd = new byte[9];
@@ -52,159 +179,166 @@ namespace hashstream.nodes
             Ver.TransIp = Ver.RecvIp = IPAddress.None;
             Ver.TransPort = Ver.RecvPort = 0;
             Ver.TransServices = Ver.RecvServices = (UInt64)Services.Unknown;
+            Ver.Relay = false; //no need for them to send new tx / blocks since we only want to map the network
+
+            QueueNewNode = nq;
+            this.db = redis.GetDatabase();
+            this.GeoIp = geo;
         }
 
-        public async Task Run()
+        public void Close()
         {
-            var db = Redis.GetDatabase();
-
-            if (!await db.KeyExistsAsync("hs:nodes:all-nodes"))
+            if(Peer != null)
             {
-                Console.WriteLine("First run.. checking seeds");
-                //get seeds
-                List<Node> allIps = new List<Node>();
-
-                foreach (var dseed in DNSSeeds)
-                {
-                    var ips = await Dns.GetHostAddressesAsync(dseed);
-                    if (ips != null && ips.Length > 0)
-                    {
-                        allIps.AddRange(ips.Select(a => new Node()
-                        {
-                            IP = new IPEndPoint(a, 8333),
-                            LastSeen = new DateTime()
-                        }));
-                    }
-                }
-
-                foreach (var n in allIps)
-                {
-                    await ParallelTasks.WaitAsync();
-                    UpdateNodeInfo(n);
-
-                    ParallelTasks.Release();
-                }
-
-                Console.WriteLine("First run complete.");
-            }
-
-            while (Running)
-            {
-                var nodes = await GetNewNodes();
-
-                foreach (var n in nodes)
-                {
-                    await ParallelTasks.WaitAsync();
-                    UpdateNodeInfo(n);
-                    ParallelTasks.Release();
-                }
-
-                Console.WriteLine("Scrape complete.");
-                await Task.Delay(30000);
+                Peer.Stop();
             }
         }
 
-        public async Task<List<Node>> GetNewNodes()
+        public async Task Connect()
         {
-            //hs:nodes:new-nodes
-            var db = Redis.GetDatabase();
-
-            var nodes = await db.SetMembersAsync("hs:nodes:new-nodes");
-            return nodes.Select(a => new Node()
-            {
-                IP = ((byte[])a).ParseIP(),
-                LastSeen = new DateTime()
-            }).ToList();
-        }
-
-        public async Task<List<Node>> GetNodeList(string list)
-        {
-            var db = Redis.GetDatabase();
-
-            var nodes = await db.SortedSetRangeByScoreWithScoresAsync($"hs:nodes:{list}", double.NegativeInfinity, double.PositiveInfinity, Exclude.None, Order.Descending);
-            return nodes.Select(a => new Node()
-            {
-                IP = ((byte[])a.Element).ParseIP(),
-                LastSeen = new DateTime((long)a.Score)
-            }).ToList();
-        }
-
-        public async Task UpdateNodeInfo(Node n)
-        {
-            //Console.WriteLine($"Update node info: {n.IP}");
             try
             {
-                //try to connect to the node to get version info and to get its peers
                 var ns = new Socket(SocketType.Stream, ProtocolType.Tcp);
-                await ns.ConnectAsync(n.IP);
-                var p = new BitcoinPeer(ns);
-                //Console.WriteLine($"Connected to {n.IP}");
-                var ss = new SemaphoreSlim(0, 1);
-                var db = Redis.GetDatabase();
-
-                p.OnVersion += async (s, v) =>
-                {
-                    //send verack and log
-                    var ip = new IPEndPoint(((IPEndPoint)s.RemoteEndpoint).Address.MapToIPv6(), ((IPEndPoint)s.RemoteEndpoint).Port);
-                    var ipb = ip.ToByteArray();
-                    await db.HashSetAsync($"hs:nodes:detail:{ip.ToString()}", "version", v.ToArray());
-                    if (await db.SortedSetAddAsync("hs:nodes:all-nodes", ipb, DateTime.Now.Ticks))
-                    {
-                        //Console.WriteLine($"Got new node: {ip}");
-                        await db.SetRemoveAsync("hs:nodes:new-nodes", ipb);
-                        var gloc = GeoIp.City(ip.Address);
-                        if (gloc.Location.HasCoordinates)
-                        {
-                            await db.GeoAddAsync("hs:nodes:geo", new GeoEntry(gloc.Location.Longitude.Value, gloc.Location.Latitude.Value, ipb));
-                        }
-                    }
-
-
-                    var va = new VerAck();
-                    await s.WriteMessage(va);
-
-                    var ga = new GetAddr();
-                    await s.WriteMessage(ga);
-                };
-
-                p.OnAddr += async (s, a) =>
-                {
-                    //Console.WriteLine($"Got {a.IpCount.Value} ips");
-                    foreach (var ip in a.Ips)
-                    {
-                        var ep = new IPEndPoint(ip.Ip.MapToIPv6(), ip.Port);
-                        var epb = ep.ToByteArray();
-                        if (await db.SetAddAsync("hs:nodes:new-nodes", epb))
-                        {
-                            //Console.WriteLine($"Got new node: {ep}");
-                        }
-                    }
-                    
-                    s.Stop();
-
-                    ss.Release();
-
-                    //Console.WriteLine($"Disconnected from {n.IP}");
-                };
-
-                p.Start();
+                await ns.ConnectAsync(IP);
+                Peer = new BitcoinPeer(ns);
+                Peer.OnVerAck += P_OnVerAck;
+                Peer.OnVersion += P_OnVersion;
+                Peer.OnAddr += P_OnAddr;
+                Peer.OnPing += P_OnPing;
+                Peer.Start();
 
                 Ver.Timestamp = (UInt64)DateTimeOffset.Now.ToUnixTimeSeconds();
 
-                await p.WriteMessage(Ver);
-                await ss.WaitAsync(TimeSpan.FromSeconds(5));
+                await Peer.WriteMessage(Ver);
+                
+                //disconnect after 5s
+                await Task.Factory.StartNew(async () =>
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(5));
+
+                    if (!GotVersion)
+                    {
+                        await SetAsBadNode();
+                    }
+                    Close();
+                });
             }
             catch (Exception ex)
             {
-                //Console.WriteLine(ex);
+                //Console.WriteLine($"Connection failed {ex.Message}, setting as bad node.");
+                await SetAsBadNode();
             }
-        }        
-    }
+        }
 
-    public class Node
-    {
-        public IPEndPoint IP { get; set; }
-        public DateTime LastSeen { get; set; }
+        public async Task<bool> IsGoodNode()
+        {
+            var ipb = IP.ToByteArray();
+            return await db.SetContainsAsync("hs:nodes:good-nodes", ipb);
+        }
+
+        public async Task<bool> SetAsGoodNode()
+        {
+            var ipb = IP.ToByteArray();
+            await UnsetAsBadNode();
+            return await db.SetAddAsync("hs:nodes:good-nodes", ipb);
+        }
+
+        public async Task<bool> UnsetAsGoodNode()
+        {
+            var ipb = IP.ToByteArray();
+            return await db.SetRemoveAsync("hs:nodes:good-nodes", ipb);
+        }
+
+        public async Task<bool> IsBadNode()
+        {
+            var ipb = IP.ToByteArray();
+            return await db.SetContainsAsync("hs:nodes:bad-nodes", ipb);
+        }
+
+        public async Task<bool> SetAsBadNode()
+        {
+            var ipb = IP.ToByteArray();
+            await UnsetAsGoodNode();
+            return await db.SetAddAsync("hs:nodes:bad-nodes", ipb);
+        }
+
+        public async Task<bool> UnsetAsBadNode()
+        {
+            var ipb = IP.ToByteArray();
+            return await db.SetRemoveAsync("hs:nodes:bad-nodes", ipb);
+        }
+
+        public async Task<bool> SetNodeDetails(bitcoin_lib.P2P.Version v)
+        {
+            var ipb = IP.ToByteArray();
+            await SetAsGoodNode();
+            if(await db.HashSetAsync($"hs:nodes:detail:{IP.ToString()}", "version", v.ToArray()))
+            {
+                await db.HashSetAsync($"hs:nodes:detail:{IP.ToString()}", "first_seen", DateTime.Now.Ticks);
+
+                var gloc = GeoIp.City(IP.Address);
+                if (gloc.Location.HasCoordinates)
+                {
+                    await db.GeoAddAsync("hs:nodes:geo", new GeoEntry(gloc.Location.Longitude.Value, gloc.Location.Latitude.Value, ipb));
+                }
+
+                return true;
+            }
+            return false;
+        }
+
+        public async Task<bitcoin_lib.P2P.Version> GetNodeDetails()
+        {
+            var ret = new bitcoin_lib.P2P.Version("");
+            var ipb = IP.ToByteArray();
+            var rv = await db.HashGetAsync($"hs:nodes:detail:{IP.ToString()}", "version");
+            if (rv.HasValue)
+            {
+                ret.ReadFromPayload(rv, 0);
+            }
+
+            return ret;
+        }
+
+        private async Task P_OnAddr(BitcoinPeer s, Addr a)
+        {
+            foreach (var ip in a.Ips)
+            {
+                var ep = new IPEndPoint(ip.Ip.MapToIPv6(), ip.Port);
+                var epb = ep.ToByteArray();
+                if (!await db.SetContainsAsync("hs:nodes:good-nodes", epb) && !await db.SetContainsAsync("hs:nodes:bad-nodes", epb))
+                {
+                    QueueNewNode(ep);
+                }
+            }
+        }
+
+        private async Task P_OnPing(BitcoinPeer s, Ping p)
+        {
+            var pong = new Pong();
+            pong.Nonce = p.Nonce;
+
+            await s.WriteMessage(pong);
+        }
+
+        private async Task P_OnVersion(BitcoinPeer s, bitcoin_lib.P2P.Version v)
+        {
+            GotVersion = true;
+
+            //send verack and log
+            await SetNodeDetails(v);
+
+            var va = new VerAck();
+            await s.WriteMessage(va);
+
+            var ga = new GetAddr();
+            await s.WriteMessage(ga);
+        }
+
+        private Task P_OnVerAck(BitcoinPeer s, VerAck va)
+        {
+            return Task.CompletedTask;
+        }
     }
 
     internal static class Ext
