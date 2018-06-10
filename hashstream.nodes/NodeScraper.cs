@@ -351,7 +351,7 @@ namespace hashstream.nodes
 
             var ip = new byte[16];
             var port = 0;
-            Buffer.BlockCopy(s, 0, ip, 0, ip.Length);
+            Array.Copy(s, 0, ip, 0, ip.Length);
             port = BitConverter.ToUInt16(s, 16);
 
             return new IPEndPoint(new IPAddress(ip), port);
@@ -365,8 +365,8 @@ namespace hashstream.nodes
             var ret = new byte[18];
             var ipba = ip.GetAddressBytes();
             var portba = BitConverter.GetBytes((UInt16)port);
-            Buffer.BlockCopy(ipba, 0, ret, 0, ipba.Length);
-            Buffer.BlockCopy(portba, 0, ret, 16, portba.Length);
+            Array.Copy(ipba, 0, ret, 0, ipba.Length);
+            Array.Copy(portba, 0, ret, 16, portba.Length);
 
             return ret;
         }

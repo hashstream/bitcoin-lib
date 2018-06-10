@@ -39,13 +39,13 @@ namespace hashstream.bitcoin_lib.P2P
 
             RecvServices = BitConverter.ToUInt64(data, offset + 20);
             var rip = new byte[16];
-            Buffer.BlockCopy(data, offset + 28, rip, 0, 16);
+            Array.Copy(data, offset + 28, rip, 0, 16);
             RecvIp = new IPAddress(rip);
             RecvPort = BitConverter.ToUInt16(data, offset + 44);
 
             TransServices = BitConverter.ToUInt64(data, offset + 46);
             var tip = new byte[16];
-            Buffer.BlockCopy(data, offset + 54, tip, 0, 16);
+            Array.Copy(data, offset + 54, tip, 0, 16);
             TransIp = new IPAddress(tip);
             TransPort = BitConverter.ToUInt16(data, offset + 70);
 
@@ -64,45 +64,45 @@ namespace hashstream.bitcoin_lib.P2P
             var pl = new byte[85 + UserAgentLength.Size + UserAgentLength];
 
             var hv = BitConverter.GetBytes(HighestVersion);
-            Buffer.BlockCopy(hv, 0, pl, 0, hv.Length);
+            Array.Copy(hv, 0, pl, 0, hv.Length);
 
             var sv = BitConverter.GetBytes(Services);
-            Buffer.BlockCopy(sv, 0, pl, 4, sv.Length);
+            Array.Copy(sv, 0, pl, 4, sv.Length);
 
             var ts = BitConverter.GetBytes(Timestamp);
-            Buffer.BlockCopy(ts, 0, pl, 12, ts.Length);
+            Array.Copy(ts, 0, pl, 12, ts.Length);
 
             var rs = BitConverter.GetBytes(RecvServices);
-            Buffer.BlockCopy(rs, 0, pl, 20, rs.Length);
+            Array.Copy(rs, 0, pl, 20, rs.Length);
 
             var ri = RecvIp.GetAddressBytes();
-            Buffer.BlockCopy(ri, 0, pl, 28, ri.Length);
+            Array.Copy(ri, 0, pl, 28, ri.Length);
 
             var rp = BitConverter.GetBytes(RecvPort);
             Array.Reverse(rp);
-            Buffer.BlockCopy(rp, 0, pl, 44, rp.Length);
+            Array.Copy(rp, 0, pl, 44, rp.Length);
 
             var tss = BitConverter.GetBytes(TransServices);
-            Buffer.BlockCopy(tss, 0, pl, 46, tss.Length);
+            Array.Copy(tss, 0, pl, 46, tss.Length);
 
             var ti = TransIp.GetAddressBytes();
-            Buffer.BlockCopy(ti, 0, pl, 54, ti.Length);
+            Array.Copy(ti, 0, pl, 54, ti.Length);
 
             var tp = BitConverter.GetBytes(TransPort);
             Array.Reverse(tp);
-            Buffer.BlockCopy(tp, 0, pl, 70, tp.Length);
+            Array.Copy(tp, 0, pl, 70, tp.Length);
 
             var nn = BitConverter.GetBytes(Nonce);
-            Buffer.BlockCopy(nn, 0, pl, 72, nn.Length);
+            Array.Copy(nn, 0, pl, 72, nn.Length);
 
             var ul = UserAgentLength.ToArray();
-            Buffer.BlockCopy(ul, 0, pl, 80, ul.Length);
+            Array.Copy(ul, 0, pl, 80, ul.Length);
 
             var ua = Encoding.ASCII.GetBytes(UserAgent);
-            Buffer.BlockCopy(ua, 0, pl, 80 + UserAgentLength.Size, ua.Length);
+            Array.Copy(ua, 0, pl, 80 + UserAgentLength.Size, ua.Length);
 
             var sh = BitConverter.GetBytes(StartHeight);
-            Buffer.BlockCopy(sh, 0, pl, 80 + UserAgentLength.Size + UserAgentLength, sh.Length);
+            Array.Copy(sh, 0, pl, 80 + UserAgentLength.Size + UserAgentLength, sh.Length);
 
             pl[pl.Length-1] = Relay ? (byte)0x01 : (byte)0x00;
 

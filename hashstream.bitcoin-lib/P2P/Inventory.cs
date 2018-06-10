@@ -27,8 +27,8 @@ namespace hashstream.bitcoin_lib.P2P
         {
             var t = BitConverter.GetBytes((UInt32)Type);
             var ret = new byte[Hash.HashBytes.Length + t.Length];
-            Buffer.BlockCopy(t, 0, ret, 0, t.Length);
-            Buffer.BlockCopy(Hash.HashBytes, 0, ret, t.Length, Hash.HashBytes.Length);
+            Array.Copy(t, 0, ret, 0, t.Length);
+            Array.Copy(Hash.HashBytes, 0, ret, t.Length, Hash.HashBytes.Length);
 
             return ret;
         }

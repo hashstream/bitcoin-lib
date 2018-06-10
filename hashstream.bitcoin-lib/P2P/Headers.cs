@@ -30,13 +30,13 @@ namespace hashstream.bitcoin_lib.P2P
             var ret = new byte[Count.Size + (Count * 80)];
 
             var c = Count.ToArray();
-            Buffer.BlockCopy(c, 0, ret, 0, c.Length);
+            Array.Copy(c, 0, ret, 0, c.Length);
 
             for (var x = 0; x < Count; x++)
             {
                 var bh = Header[x];
                 var dt = bh.ToArray();
-                Buffer.BlockCopy(dt, 0, ret, Count.Size + (x * 80), dt.Length);
+                Array.Copy(dt, 0, ret, Count.Size + (x * 80), dt.Length);
             }
 
             return ret;

@@ -32,12 +32,12 @@ namespace hashstream.bitcoin_lib.P2P
         {
             var ret = new byte[8 + (36 * Inventory.Length)];
             var c = Count.ToArray();
-            Buffer.BlockCopy(c, 0, ret, 0, Count.Size);
+            Array.Copy(c, 0, ret, 0, Count.Size);
 
             for (var x = 0; x < Count; x++)
             {
                 var ni = Inventory[x].ToArray();
-                Buffer.BlockCopy(ni, 0, ret, Count.Size + (36 * x), ni.Length);
+                Array.Copy(ni, 0, ret, Count.Size + (36 * x), ni.Length);
             }
 
             return ret;

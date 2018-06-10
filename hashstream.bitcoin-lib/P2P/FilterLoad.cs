@@ -23,7 +23,7 @@ namespace hashstream.bitcoin_lib.P2P
             FilterBytes.ReadFromPayload(data, offset);
 
             Filter = new byte[FilterBytes];
-            Buffer.BlockCopy(data, offset + FilterBytes.Size, Filter, 0, Filter.Length);
+            Array.Copy(data, offset + FilterBytes.Size, Filter, 0, Filter.Length);
 
             HashFunctions = BitConverter.ToUInt32(data, offset + FilterBytes + FilterBytes.Size);
             Tweak = BitConverter.ToUInt32(data, offset + FilterBytes + FilterBytes.Size + 4);
@@ -34,14 +34,14 @@ namespace hashstream.bitcoin_lib.P2P
         {
             var ret = new byte[Size];
             var fb = FilterBytes.ToArray();
-            Buffer.BlockCopy(fb, 0, ret, 0, fb.Length);
-            Buffer.BlockCopy(Filter, 0, ret, fb.Length, Filter.Length);
+            Array.Copy(fb, 0, ret, 0, fb.Length);
+            Array.Copy(Filter, 0, ret, fb.Length, Filter.Length);
 
             var hf = BitConverter.GetBytes(HashFunctions);
-            Buffer.BlockCopy(hf, 0, ret, fb.Length + Filter.Length, hf.Length);
+            Array.Copy(hf, 0, ret, fb.Length + Filter.Length, hf.Length);
 
             var tw = BitConverter.GetBytes(Tweak);
-            Buffer.BlockCopy(tw, 0, ret, fb.Length + Filter.Length + hf.Length, tw.Length);
+            Array.Copy(tw, 0, ret, fb.Length + Filter.Length + hf.Length, tw.Length);
 
             ret[ret.Length - 1] = Flags;
 

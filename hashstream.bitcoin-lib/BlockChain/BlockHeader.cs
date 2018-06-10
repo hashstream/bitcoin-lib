@@ -33,22 +33,22 @@ namespace hashstream.bitcoin_lib.BlockChain
             var ret = new byte[Size];
 
             var v = BitConverter.GetBytes(Version);
-            Buffer.BlockCopy(v, 0, ret, 0, v.Length);
+            Array.Copy(v, 0, ret, 0, v.Length);
 
             var pb = PrevBlock.ToArray();
-            Buffer.BlockCopy(pb, 0, ret, 4, pb.Length);
+            Array.Copy(pb, 0, ret, 4, pb.Length);
 
             var mr = MerkleRoot.ToArray();
-            Buffer.BlockCopy(mr, 0, ret, 36, mr.Length);
+            Array.Copy(mr, 0, ret, 36, mr.Length);
 
             var t = BitConverter.GetBytes(Time);
-            Buffer.BlockCopy(t, 0, ret, 68, t.Length);
+            Array.Copy(t, 0, ret, 68, t.Length);
 
             var nb = BitConverter.GetBytes(Target);
-            Buffer.BlockCopy(nb, 0, ret, 72, nb.Length);
+            Array.Copy(nb, 0, ret, 72, nb.Length);
 
             var nn = BitConverter.GetBytes(Nonce);
-            Buffer.BlockCopy(nn, 0, ret, 76, nn.Length);
+            Array.Copy(nn, 0, ret, 76, nn.Length);
 
             return ret;
         }

@@ -27,6 +27,8 @@ namespace hashstream.bitcoin_lib
                 throw new Exception("Invalid hex string");
             }
 
+            s = s.ToUpper();
+
             var ret = new byte[s.Length / 2];
             for(var x = 0; x < s.Length; x += 2)
             {

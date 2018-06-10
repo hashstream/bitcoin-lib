@@ -23,10 +23,10 @@ namespace hashstream.bitcoin_lib.BlockChain
         public byte[] ToArray()
         {
             var ret = new byte[Size];
-            Buffer.BlockCopy(Hash.HashBytes, 0, ret, 0, Hash.HashBytes.Length);
+            Array.Copy(Hash.HashBytes, 0, ret, 0, Hash.HashBytes.Length);
 
             var id = BitConverter.GetBytes(Index);
-            Buffer.BlockCopy(id, 0, ret, 32, id.Length);
+            Array.Copy(id, 0, ret, 32, id.Length);
 
             return ret;
         }

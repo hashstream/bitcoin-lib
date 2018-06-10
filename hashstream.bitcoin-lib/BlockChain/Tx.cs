@@ -29,15 +29,18 @@ namespace hashstream.bitcoin_lib.BlockChain
             readoffset += 4;
 
             //check for extended version
-            var dummy = data[readoffset];
-            if (dummy == 0 && allowWitness)
+            var extended = data[readoffset] == 0 && data[readoffset + 1] != 0 && allowWitness;
+            if (extended)
             {
                 Flags = data[readoffset + 1];
                 readoffset += 2;
+                Size += 2;
             }
 
             TxInCount = new VarInt(0);
             TxInCount.ReadFromPayload(data, readoffset);
+
+            Size += TxInCount.Size;
             readoffset += TxInCount.Size;
 
             TxIn = new TxIn[TxInCount];
@@ -54,6 +57,8 @@ namespace hashstream.bitcoin_lib.BlockChain
 
             TxOutCount = new VarInt(0);
             TxOutCount.ReadFromPayload(data, readoffset);
+
+            Size += TxOutCount.Size;
             readoffset += TxOutCount.Size;
 
             TxOut = new TxOut[TxOutCount];
@@ -77,12 +82,13 @@ namespace hashstream.bitcoin_lib.BlockChain
                     //read the len
                     tx.WitnessScripts = new WitnessScripts();
                     tx.WitnessScripts.ReadFromPayload(data, readoffset);
+
                     readoffset += tx.WitnessScripts.TotalLength;
+                    Size += tx.WitnessScripts.TotalLength;
                 }
             }
 
             LockTime = BitConverter.ToUInt32(data, readoffset);
-            Size += TxInCount.Size + TxOutCount.Size;
         }
 
         public byte[] ToArray()
@@ -94,32 +100,32 @@ namespace hashstream.bitcoin_lib.BlockChain
             var ret = new byte[8 + tis + tos + TxInCount.Size + TxOutCount.Size];
 
             var v = BitConverter.GetBytes(Version);
-            Buffer.BlockCopy(v, 0, ret, 0, v.Length);
+            Array.Copy(v, 0, ret, 0, v.Length);
 
             var ti = TxInCount.ToArray();
-            Buffer.BlockCopy(ti, 0, ret, 4, ti.Length);
+            Array.Copy(ti, 0, ret, 4, ti.Length);
 
             var txInOffset = 4 + ti.Length;
             for(var x = 0; x < TxInCount; x++)
             {
                 var tx = TxIn[x].ToArray();
-                Buffer.BlockCopy(tx, 0, ret, txInOffset, tx.Length);
+                Array.Copy(tx, 0, ret, txInOffset, tx.Length);
                 txInOffset += tx.Length;
             }
 
             var to = TxOutCount.ToArray();
-            Buffer.BlockCopy(to, 0, ret, txInOffset, to.Length);
+            Array.Copy(to, 0, ret, txInOffset, to.Length);
 
             var txOutOffset = txInOffset + to.Length;
             for(var x = 0; x < TxOutCount; x++)
             {
                 var tx = TxOut[x].ToArray();
-                Buffer.BlockCopy(tx, 0, ret, txOutOffset, tx.Length);
+                Array.Copy(tx, 0, ret, txOutOffset, tx.Length);
                 txOutOffset += tx.Length;
             }
 
             var lt = BitConverter.GetBytes(LockTime);
-            Buffer.BlockCopy(lt, 0, ret, txOutOffset, lt.Length);
+            Array.Copy(lt, 0, ret, txOutOffset, lt.Length);
 
             return ret;
         }

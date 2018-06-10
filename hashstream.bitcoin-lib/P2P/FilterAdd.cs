@@ -18,7 +18,7 @@ namespace hashstream.bitcoin_lib.P2P
             ElementCount.ReadFromPayload(data, offset);
 
             Elements = new byte[ElementCount];
-            Buffer.BlockCopy(Elements, offset + ElementCount, Elements, 0, ElementCount);
+            Array.Copy(Elements, offset + ElementCount, Elements, 0, ElementCount);
         }
 
         public byte[] ToArray()
@@ -26,9 +26,9 @@ namespace hashstream.bitcoin_lib.P2P
             var ret = new byte[ElementCount.Size + ElementCount];
 
             var ec = ElementCount.ToArray();
-            Buffer.BlockCopy(ec, 0, ret, 0, ec.Length);
+            Array.Copy(ec, 0, ret, 0, ec.Length);
 
-            Buffer.BlockCopy(Elements, 0, ret, ec.Length, Elements.Length);
+            Array.Copy(Elements, 0, ret, ec.Length, Elements.Length);
 
             return ret;
         }

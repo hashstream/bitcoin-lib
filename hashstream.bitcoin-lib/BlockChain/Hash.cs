@@ -1,6 +1,7 @@
 ﻿using hashstream.bitcoin_lib.P2P;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace hashstream.bitcoin_lib.BlockChain
@@ -16,9 +17,14 @@ namespace hashstream.bitcoin_lib.BlockChain
             HashBytes = new byte[Size];
         }
 
+        public static Hash Empty()
+        {
+            return new Hash();
+        }
+
         public Hash(byte[] h)
         {
-            if(h.Length != Size)
+            if (h.Length != Size)
             {
                 throw new Exception($"Invalid hash length {h.Length} != {Size}");
             }
@@ -28,7 +34,7 @@ namespace hashstream.bitcoin_lib.BlockChain
 
         public Hash(string h)
         {
-            if(h.Length != Size * 2)
+            if (h.Length != Size * 2)
             {
                 throw new Exception($"Invalid hash length {h.Length} != {Size}");
             }
@@ -43,7 +49,8 @@ namespace hashstream.bitcoin_lib.BlockChain
 
         public void ReadFromPayload(byte[] data, int offset)
         {
-            Buffer.BlockCopy(data, offset, HashBytes, 0, HashBytes.Length);
+            Array.Copy(data, offset, HashBytes, 0, HashBytes.Length);
+            HashBytes = HashBytes.Reverse().ToArray();
         }
 
         public byte[] ToArray()
@@ -54,6 +61,26 @@ namespace hashstream.bitcoin_lib.BlockChain
         public static implicit operator Hash(byte[] b)
         {
             return new Hash(b);
+        }
+
+        public static implicit operator Hash(string b)
+        {
+            return new Hash(b);
+        }
+
+        public static implicit operator string(Hash b)
+        {
+            return b.ToString();
+        }
+
+        public static bool operator ==(Hash h, string s)
+        {
+            return new Hash(s) == h;
+        }
+
+        public static bool operator !=(Hash h, string s)
+        {
+            return new Hash(s) != h;
         }
     }
 }

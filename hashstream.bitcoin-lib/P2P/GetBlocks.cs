@@ -24,13 +24,13 @@ namespace hashstream.bitcoin_lib.P2P
             for (var x = 0; x < HashCount; x++)
             {
                 var ch = new Hash() { HashBytes = new byte[32] };
-                Buffer.BlockCopy(data, offset + 4 + HashCount.Size + (ch.HashBytes.Length * x), ch.HashBytes, 0, ch.HashBytes.Length);
+                Array.Copy(data, offset + 4 + HashCount.Size + (ch.HashBytes.Length * x), ch.HashBytes, 0, ch.HashBytes.Length);
 
                 Hashes[x] = ch;
             }
 
             StopHash = new Hash() { HashBytes = new byte[32] };
-            Buffer.BlockCopy(data, offset + 4 + HashCount.Size + (HashCount * 32), StopHash.HashBytes, 0, StopHash.HashBytes.Length);
+            Array.Copy(data, offset + 4 + HashCount.Size + (HashCount * 32), StopHash.HashBytes, 0, StopHash.HashBytes.Length);
         }
 
         public byte[] ToArray()

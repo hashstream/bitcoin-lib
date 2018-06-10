@@ -24,7 +24,7 @@ namespace hashstream.bitcoin_lib.BlockChain
             ScriptLength.ReadFromPayload(data, offset + Previous.Size);
 
             Script = new byte[ScriptLength];
-            Buffer.BlockCopy(data, offset + Previous.Size, Script, 0, ScriptLength);
+            Array.Copy(data, offset + Previous.Size, Script, 0, ScriptLength);
 
             Sequence = BitConverter.ToUInt32(data, offset + Previous.Size + ScriptLength);
         }
@@ -34,15 +34,15 @@ namespace hashstream.bitcoin_lib.BlockChain
             var ret = new byte[Size];
 
             var p = Previous.ToArray();
-            Buffer.BlockCopy(p, 0, ret, 0, p.Length);
+            Array.Copy(p, 0, ret, 0, p.Length);
 
             var sl = ScriptLength.ToArray();
-            Buffer.BlockCopy(sl, 0, ret, p.Length, sl.Length);
+            Array.Copy(sl, 0, ret, p.Length, sl.Length);
 
-            Buffer.BlockCopy(Script, 0, ret, p.Length + sl.Length, Script.Length);
+            Array.Copy(Script, 0, ret, p.Length + sl.Length, Script.Length);
 
             var sq = BitConverter.GetBytes(Sequence);
-            Buffer.BlockCopy(sq, 0, ret, p.Length + sl.Length + Script.Length, sq.Length);
+            Array.Copy(sq, 0, ret, p.Length + sl.Length + Script.Length, sq.Length);
 
             return ret;
         }

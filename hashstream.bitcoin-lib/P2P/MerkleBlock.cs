@@ -36,7 +36,7 @@ namespace hashstream.bitcoin_lib.P2P
             FlagByteCount.ReadFromPayload(data, offset + 84 + HashCount.Size + (HashCount * 32));
 
             Flags = new byte[FlagByteCount];
-            Buffer.BlockCopy(data, offset + 84 + HashCount.Size + (HashCount * 32) + FlagByteCount.Size, Flags, 0, Flags.Length);
+            Array.Copy(data, offset + 84 + HashCount.Size + (HashCount * 32) + FlagByteCount.Size, Flags, 0, Flags.Length);
         }
 
         public byte[] ToArray()
@@ -44,24 +44,24 @@ namespace hashstream.bitcoin_lib.P2P
             var ret = new byte[84 + HashCount.Size + FlagByteCount.Size + FlagByteCount + (32 * HashCount)];
 
             var bh = BlockHeader.ToArray();
-            Buffer.BlockCopy(bh, 0, ret, 0, bh.Length);
+            Array.Copy(bh, 0, ret, 0, bh.Length);
 
             var tr = BitConverter.GetBytes(Transactions);
-            Buffer.BlockCopy(tr, 0, ret, 80, tr.Length);
+            Array.Copy(tr, 0, ret, 80, tr.Length);
 
             var hc = HashCount.ToArray();
-            Buffer.BlockCopy(hc, 0, ret, 84, hc.Length);
+            Array.Copy(hc, 0, ret, 84, hc.Length);
 
             for (var x = 0; x < HashCount; x++)
             {
                 var hx = Hashes[x].ToArray();
-                Buffer.BlockCopy(hx, 0, ret, 84 + hc.Length + (x * 32), hx.Length);
+                Array.Copy(hx, 0, ret, 84 + hc.Length + (x * 32), hx.Length);
             }
 
             var fb = FlagByteCount.ToArray();
-            Buffer.BlockCopy(fb, 0, ret, 84 + hc.Length + (32 * HashCount), fb.Length);
+            Array.Copy(fb, 0, ret, 84 + hc.Length + (32 * HashCount), fb.Length);
 
-            Buffer.BlockCopy(Flags, 0, ret, 84 + hc.Length + (32 * HashCount) + fb.Length, Flags.Length);
+            Array.Copy(Flags, 0, ret, 84 + hc.Length + (32 * HashCount) + fb.Length, Flags.Length);
 
             return ret;
 

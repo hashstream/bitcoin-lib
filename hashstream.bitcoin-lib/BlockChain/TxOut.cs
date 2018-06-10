@@ -1,7 +1,5 @@
 ﻿using hashstream.bitcoin_lib.P2P;
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace hashstream.bitcoin_lib.BlockChain
 {
@@ -11,7 +9,7 @@ namespace hashstream.bitcoin_lib.BlockChain
         public VarInt ScriptLength { get; set; }
         public byte[] Script { get; set; }
 
-        public int Size => 8 + ScriptLength + ScriptLength.Size;
+        public int Size { get; private set; }
 
         public void ReadFromPayload(byte[] data, int offset)
         {
@@ -20,7 +18,9 @@ namespace hashstream.bitcoin_lib.BlockChain
             ScriptLength.ReadFromPayload(data, offset + 8);
 
             Script = new byte[ScriptLength];
-            Buffer.BlockCopy(data, offset + 8 + ScriptLength.Size, Script, 0, Script.Length);
+            Array.Copy(data, offset + 8 + ScriptLength.Size, Script, 0, Script.Length);
+
+            Size = 8 + ScriptLength + ScriptLength.Size;
         }
 
         public byte[] ToArray()
@@ -28,12 +28,12 @@ namespace hashstream.bitcoin_lib.BlockChain
             var ret = new byte[Size];
 
             var v = BitConverter.GetBytes(Value);
-            Buffer.BlockCopy(v, 0, ret, 0, v.Length);
+            Array.Copy(v, 0, ret, 0, v.Length);
 
             var sl = ScriptLength.ToArray();
-            Buffer.BlockCopy(sl, 0, ret, 8, sl.Length);
+            Array.Copy(sl, 0, ret, 8, sl.Length);
 
-            Buffer.BlockCopy(Script, 0, ret, 8 + sl.Length, Script.Length);
+            Array.Copy(Script, 0, ret, 8 + sl.Length, Script.Length);
 
             return ret;
         }

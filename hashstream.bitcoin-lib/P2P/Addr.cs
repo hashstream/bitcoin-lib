@@ -35,13 +35,13 @@ namespace hashstream.bitcoin_lib.P2P
             var ret = new byte[ix + IpCount.Size];
 
             var ic = IpCount.ToArray();
-            Buffer.BlockCopy(ic, 0, ret, 0, ic.Length);
+            Array.Copy(ic, 0, ret, 0, ic.Length);
 
             var ipOffset = ic.Length;
             for (var x = 0; x < IpCount; x++)
             {
                 var ip = Ips[x].ToArray();
-                Buffer.BlockCopy(ret, 0, ret, ipOffset, ip.Length);
+                Array.Copy(ret, 0, ret, ipOffset, ip.Length);
                 ipOffset += ip.Length;
             }
 

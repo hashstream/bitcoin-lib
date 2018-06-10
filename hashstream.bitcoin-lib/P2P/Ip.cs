@@ -20,11 +20,11 @@ namespace hashstream.bitcoin_lib.P2P
             Services = BitConverter.ToUInt64(data, offset + 4);
 
             var ip = new byte[16];
-            Buffer.BlockCopy(data, offset + 12, ip, 0, ip.Length);
+            Array.Copy(data, offset + 12, ip, 0, ip.Length);
             Ip = new IPAddress(ip);
 
             var pt = new byte[2];
-            Buffer.BlockCopy(data, offset + 28, pt, 0, pt.Length);
+            Array.Copy(data, offset + 28, pt, 0, pt.Length);
             Array.Reverse(pt);
             Port = BitConverter.ToUInt16(pt, 0);
         }
@@ -34,16 +34,16 @@ namespace hashstream.bitcoin_lib.P2P
             var ret = new byte[Size];
 
             var t = BitConverter.GetBytes(Time);
-            Buffer.BlockCopy(t, 0, ret, 0, t.Length);
+            Array.Copy(t, 0, ret, 0, t.Length);
 
             var s = BitConverter.GetBytes(Services);
-            Buffer.BlockCopy(s, 0, ret, 4, s.Length);
+            Array.Copy(s, 0, ret, 4, s.Length);
 
             var i = Ip.MapToIPv6().GetAddressBytes();
-            Buffer.BlockCopy(i, 0, ret, 12, i.Length);
+            Array.Copy(i, 0, ret, 12, i.Length);
 
             var p = BitConverter.GetBytes(Port);
-            Buffer.BlockCopy(p, 0, ret, 28, p.Length);
+            Array.Copy(p, 0, ret, 28, p.Length);
 
             return ret;
         }

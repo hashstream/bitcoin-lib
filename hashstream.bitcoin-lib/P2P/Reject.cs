@@ -44,7 +44,7 @@ namespace hashstream.bitcoin_lib.P2P
             Reason = Encoding.ASCII.GetString(data, offset + MessageLength + MessageLength.Size + 1 + ReasonLength.Size, ReasonLength);
             var of = offset + MessageLength + MessageLength.Size + 1 + ReasonLength.Size + ReasonLength;
             Extra = new byte[data.Length - of]; // ew no length = we have to rely on the length of the buffer (reading more "Extra" than we should)
-            Buffer.BlockCopy(data, of, Extra, 0, Extra.Length);
+            Array.Copy(data, of, Extra, 0, Extra.Length);
         }
 
         public byte[] ToArray()
@@ -52,20 +52,20 @@ namespace hashstream.bitcoin_lib.P2P
             var ret = new byte[Size];
 
             var ml = MessageLength.ToArray();
-            Buffer.BlockCopy(ml, 0, ret, 0, ml.Length);
+            Array.Copy(ml, 0, ret, 0, ml.Length);
 
             var mg = Encoding.ASCII.GetBytes(Message);
-            Buffer.BlockCopy(mg, 0, ret, ml.Length, mg.Length);
+            Array.Copy(mg, 0, ret, ml.Length, mg.Length);
 
             ret[mg.Length + ml.Length - 2] = Code;
 
             var rl = ReasonLength.ToArray();
-            Buffer.BlockCopy(rl, 0, ret, mg.Length + ml.Length + 1, rl.Length);
+            Array.Copy(rl, 0, ret, mg.Length + ml.Length + 1, rl.Length);
 
             var re = Encoding.ASCII.GetBytes(Reason);
-            Buffer.BlockCopy(re, 0, ret, mg.Length + ml.Length + 1 + rl.Length, re.Length);
+            Array.Copy(re, 0, ret, mg.Length + ml.Length + 1 + rl.Length, re.Length);
 
-            Buffer.BlockCopy(Extra, 0, ret, mg.Length + ml.Length + 1 + rl.Length + re.Length, Extra.Length);
+            Array.Copy(Extra, 0, ret, mg.Length + ml.Length + 1 + rl.Length + re.Length, Extra.Length);
 
             return ret;
         }

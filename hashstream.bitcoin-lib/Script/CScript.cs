@@ -15,7 +15,7 @@ namespace hashstream.bitcoin_lib.Script
             Length.ReadFromPayload(data, offset);
 
             Stack = new byte[Length];
-            Buffer.BlockCopy(data, offset + Length.Size, Stack, 0, Stack.Length);
+            Array.Copy(data, offset + Length.Size, Stack, 0, Stack.Length);
         }
 
         public byte[] ToArray()
