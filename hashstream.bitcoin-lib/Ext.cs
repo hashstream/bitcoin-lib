@@ -12,7 +12,7 @@ namespace hashstream.bitcoin_lib
         private static Dictionary<string, byte> BuildHexTable()
         {
             var ret = new Dictionary<string, byte>();
-            for(var x = 0; x < 255; x++)
+            for(var x = 0; x <= 255; x++)
             {
                 ret.Add(x.ToString("X2"), (byte)x);
             }

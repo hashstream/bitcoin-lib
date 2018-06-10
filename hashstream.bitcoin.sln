@@ -9,7 +9,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "hashstream.bitcoin-node-tes
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "hashstream.bitcoin-node", "hashstream.bitcoin-node\hashstream.bitcoin-node.csproj", "{8543038A-F5F7-4429-9F27-A8A36ADB3DC0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "hashstream.nodes", "hashstream.nodes\hashstream.nodes.csproj", "{A299C311-96FE-49C3-BA69-E27D02D760DD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "hashstream.nodes", "hashstream.nodes\hashstream.nodes.csproj", "{A299C311-96FE-49C3-BA69-E27D02D760DD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "lib-test", "lib-test\lib-test.csproj", "{D0048D87-095F-472D-8FB6-6D3F0588588D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{A299C311-96FE-49C3-BA69-E27D02D760DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A299C311-96FE-49C3-BA69-E27D02D760DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A299C311-96FE-49C3-BA69-E27D02D760DD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D0048D87-095F-472D-8FB6-6D3F0588588D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D0048D87-095F-472D-8FB6-6D3F0588588D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D0048D87-095F-472D-8FB6-6D3F0588588D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D0048D87-095F-472D-8FB6-6D3F0588588D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

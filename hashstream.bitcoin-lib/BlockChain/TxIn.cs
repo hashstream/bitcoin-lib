@@ -10,6 +10,7 @@ namespace hashstream.bitcoin_lib.BlockChain
         public Outpoint Previous { get; set; }
         public VarInt ScriptLength { get; set; }
         public byte[] Script { get; set; }
+        public WitnessScripts WitnessScripts { get; set; }
         public UInt32 Sequence { get; set; } = 0xffffffff;
 
         public int Size => 40 + ScriptLength.Size + ScriptLength;

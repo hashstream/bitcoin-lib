@@ -14,7 +14,7 @@ namespace hashstream.bitcoin_lib.BlockChain
         public VarInt(UInt64 v)
         {
             Value = v;
-            if (v < 0xfd)
+            if (v < 253)
             {
                 Size = 1;
             }
@@ -46,7 +46,7 @@ namespace hashstream.bitcoin_lib.BlockChain
         {
             var b1 = header[offset];
 
-            if (b1 < 0xfd)
+            if (b1 < 253)
             {
                 Size = 1;
                 Value = (UInt64)b1;
@@ -65,7 +65,8 @@ namespace hashstream.bitcoin_lib.BlockChain
             {
                 Size = 9;
                 Value = BitConverter.ToUInt64(header, offset + 1);
-            }else
+            }
+            else
             {
                 Console.Write("FUCK");
             }

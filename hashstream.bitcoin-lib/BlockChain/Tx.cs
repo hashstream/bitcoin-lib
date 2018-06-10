@@ -1,14 +1,17 @@
 ﻿using hashstream.bitcoin_lib.P2P;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace hashstream.bitcoin_lib.BlockChain
 {
     public class Tx : IStreamable
     {
-        public UInt32 Version { get; set; } = 1;
+        public static readonly int SERIALIZE_TRANSACTION_NO_WITNESS = 0x40000000;
+        public static readonly Int32 CURRENT_VERSION = 2;
+        public static readonly Int32 MAX_STANDARD_VERSION = 2;
+
+        public Int32 Version { get; set; } = CURRENT_VERSION;
+        public byte Flags { get; set; }
         public VarInt TxInCount { get; set; }
         public TxIn[] TxIn { get; set; }
         public VarInt TxOutCount { get; set; }
@@ -18,43 +21,67 @@ namespace hashstream.bitcoin_lib.BlockChain
 
         public void ReadFromPayload(byte[] data, int offset)
         {
+            var allowWitness = (CURRENT_VERSION & SERIALIZE_TRANSACTION_NO_WITNESS) == 0;
+            var readoffset = offset;
+
             Size = 8;
-            Version = BitConverter.ToUInt32(data, offset);
+            Version = BitConverter.ToInt32(data, readoffset);
+            readoffset += 4;
+
+            //check for extended version
+            var dummy = data[readoffset];
+            if (dummy == 0 && allowWitness)
+            {
+                Flags = data[readoffset + 1];
+                readoffset += 2;
+            }
+
             TxInCount = new VarInt(0);
-            TxInCount.ReadFromPayload(data, offset + 4);
+            TxInCount.ReadFromPayload(data, readoffset);
+            readoffset += TxInCount.Size;
 
             TxIn = new TxIn[TxInCount];
-
-            int txInOffset = offset + 4 + TxInCount.Size;
             for (var x = 0; x < TxInCount; x++)
             {
                 var tx = new TxIn();
-                tx.ReadFromPayload(data, txInOffset);
+                tx.ReadFromPayload(data, readoffset);
 
                 TxIn[x] = tx;
 
-                txInOffset += tx.Size;
+                readoffset += tx.Size;
                 Size += tx.Size;
             }
 
             TxOutCount = new VarInt(0);
-            TxOutCount.ReadFromPayload(data, txInOffset);
+            TxOutCount.ReadFromPayload(data, readoffset);
+            readoffset += TxOutCount.Size;
 
             TxOut = new TxOut[TxOutCount];
-
-            int txOutOffset = txInOffset + TxOutCount.Size;
             for (var x = 0; x < TxOutCount; x++)
             {
                 var tx = new TxOut();
-                tx.ReadFromPayload(data, txOutOffset);
+                tx.ReadFromPayload(data, readoffset);
 
                 TxOut[x] = tx;
 
-                txOutOffset += tx.Size;
+                readoffset += tx.Size;
                 Size += tx.Size;
             }
 
-            LockTime = BitConverter.ToUInt32(data, txOutOffset);
+            //read witness scripts
+            if((Flags & 1) == 1 && allowWitness)
+            {
+                Flags ^= 1;
+                foreach(var tx in TxIn)
+                {
+                    //read the len
+                    tx.WitnessScripts = new WitnessScripts();
+                    tx.WitnessScripts.ReadFromPayload(data, readoffset);
+                    readoffset += tx.WitnessScripts.TotalLength;
+                }
+            }
+
+            LockTime = BitConverter.ToUInt32(data, readoffset);
             Size += TxInCount.Size + TxOutCount.Size;
         }
 
