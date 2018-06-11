@@ -35,13 +35,13 @@ namespace hashstream.bitcoin_lib.P2P
             MessageLength = new VarInt(0);
             MessageLength.ReadFromPayload(data, offset);
 
-            Message = Encoding.ASCII.GetString(data, offset + MessageLength.Size, MessageLength);
+            Message = System.Text.Encoding.ASCII.GetString(data, offset + MessageLength.Size, MessageLength);
             Code = data[offset + MessageLength + MessageLength.Size];
 
             ReasonLength = new VarInt(0);
             ReasonLength.ReadFromPayload(data, offset + MessageLength + MessageLength.Size + 1);
 
-            Reason = Encoding.ASCII.GetString(data, offset + MessageLength + MessageLength.Size + 1 + ReasonLength.Size, ReasonLength);
+            Reason = System.Text.Encoding.ASCII.GetString(data, offset + MessageLength + MessageLength.Size + 1 + ReasonLength.Size, ReasonLength);
             var of = offset + MessageLength + MessageLength.Size + 1 + ReasonLength.Size + ReasonLength;
             Extra = new byte[data.Length - of]; // ew no length = we have to rely on the length of the buffer (reading more "Extra" than we should)
             Array.Copy(data, of, Extra, 0, Extra.Length);
@@ -54,7 +54,7 @@ namespace hashstream.bitcoin_lib.P2P
             var ml = MessageLength.ToArray();
             Array.Copy(ml, 0, ret, 0, ml.Length);
 
-            var mg = Encoding.ASCII.GetBytes(Message);
+            var mg = System.Text.Encoding.ASCII.GetBytes(Message);
             Array.Copy(mg, 0, ret, ml.Length, mg.Length);
 
             ret[mg.Length + ml.Length - 2] = Code;
@@ -62,7 +62,7 @@ namespace hashstream.bitcoin_lib.P2P
             var rl = ReasonLength.ToArray();
             Array.Copy(rl, 0, ret, mg.Length + ml.Length + 1, rl.Length);
 
-            var re = Encoding.ASCII.GetBytes(Reason);
+            var re = System.Text.Encoding.ASCII.GetBytes(Reason);
             Array.Copy(re, 0, ret, mg.Length + ml.Length + 1 + rl.Length, re.Length);
 
             Array.Copy(Extra, 0, ret, mg.Length + ml.Length + 1 + rl.Length + re.Length, Extra.Length);

@@ -16,12 +16,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="hashstream.bitcoin-lib">
-      <HintPath>..\hashstream.bitcoin-lib\bin\Debug\netcoreapp2.0\hashstream.bitcoin-lib.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Diagnostics.Debug">
-      <HintPath>..\..\..\..\..\..\Program Files\dotnet\sdk\NuGetFallbackFolder\microsoft.netcore.app\2.0.0\ref\netcoreapp2.0\System.Diagnostics.Debug.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\hashstream.bitcoin-lib\hashstream.bitcoin-lib.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
   </ItemGroup>
 
 </Project>

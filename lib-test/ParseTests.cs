@@ -1,5 +1,7 @@
 ﻿using hashstream.bitcoin_lib;
 using hashstream.bitcoin_lib.BlockChain;
+using hashstream.bitcoin_lib.Encoding;
+using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
@@ -17,13 +19,13 @@ namespace lib_test
             var tx_parsed = new Tx();
             tx_parsed.ReadFromPayload(tx, 0);
 
-            Debug.Assert(tx_parsed.Version == 1);
+            Assert.True(tx_parsed.Version == 1);
 
-            Debug.Assert(tx_parsed.TxIn.Length == 1);
-            Debug.Assert(tx_parsed.TxOut.Length == 2);
+            Assert.True(tx_parsed.TxIn.Length == 1);
+            Assert.True(tx_parsed.TxOut.Length == 2);
 
-            Debug.Assert(tx_parsed.TxOut[0].Value == 1709500000);
-            Debug.Assert(tx_parsed.TxOut[1].Value == 291410000);
+            Assert.True(tx_parsed.TxOut[0].Value == 1709500000);
+            Assert.True(tx_parsed.TxOut[1].Value == 291410000);
         }
 
         [Fact]
@@ -34,13 +36,13 @@ namespace lib_test
             var tx_parsed = new Tx();
             tx_parsed.ReadFromPayload(tx, 0);
 
-            Debug.Assert(tx_parsed.Version == 1);
+            Assert.True(tx_parsed.Version == 1);
 
-            Debug.Assert(tx_parsed.TxIn.Length == 1);
-            Debug.Assert(tx_parsed.TxOut.Length == 2);
+            Assert.True(tx_parsed.TxIn.Length == 1);
+            Assert.True(tx_parsed.TxOut.Length == 2);
 
-            Debug.Assert(tx_parsed.TxOut[0].Value == 113140);
-            Debug.Assert(tx_parsed.TxOut[1].Value == 567645807);
+            Assert.True(tx_parsed.TxOut[0].Value == 113140);
+            Assert.True(tx_parsed.TxOut[1].Value == 567645807);
         }
 
         [Fact]
@@ -52,11 +54,11 @@ namespace lib_test
             var block_parsed = new Block();
             block_parsed.ReadFromPayload(block, 0);
 
-            Debug.Assert(block_parsed.Header.Version == 1);
+            Assert.True(block_parsed.Header.Version == 1);
 
             var satoshi = "The Times 03/Jan/2009 Chancellor on brink of second bailout for bank";
 
-            Debug.Assert(Encoding.UTF8.GetString(block_parsed.Txns[0].TxIn[0].Script).Contains(satoshi));
+            Assert.Contains(satoshi, Encoding.UTF8.GetString(block_parsed.Txns[0].TxIn[0].Script));
         }
 
         [Fact]
@@ -67,15 +69,45 @@ namespace lib_test
             var block_parsed = new Block();
             block_parsed.ReadFromPayload(block, 0);
 
-            Debug.Assert(block_parsed.Header.Version == 536870912);
-            Debug.Assert(block_parsed.Txns.Length == 7);
-            Debug.Assert(block_parsed.Txns[6].TxOut.Length == 2);
-            Debug.Assert(block_parsed.Txns[6].TxOut[0].Value == 1715000);
-            Debug.Assert(block_parsed.Txns[6].TxOut[1].Value == 3426060);
-            Debug.Assert(block_parsed.Header.MerkleRoot == "d4527da6ef046fa1a66ea935b839c075ef9e9cefe53cdafffb03471b9b78c154");
+            Assert.True(block_parsed.Header.Version == 536870912);
+            Assert.True(block_parsed.Txns.Length == 7);
+            Assert.True(block_parsed.Txns[6].TxOut.Length == 2);
+            Assert.True(block_parsed.Txns[6].TxOut[0].Value == 1715000);
+            Assert.True(block_parsed.Txns[6].TxOut[1].Value == 3426060);
+            Assert.True(block_parsed.Header.MerkleRoot == "d4527da6ef046fa1a66ea935b839c075ef9e9cefe53cdafffb03471b9b78c154");
         }
 
         [Fact]
+        public void Bech32_Parse()
+        {
+            //from BIP 0173
+            var main_p2wpkh = "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4";
+            var test_p2wpkh = "tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx";
+            var main_p2wsh = "bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3";
+            var test_p2wsh = "tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sl5k7";
+
+            //check for exceptions
+            new Bech32(main_p2wpkh);
+            new Bech32(test_p2wpkh);
+            new Bech32(main_p2wsh);
+            new Bech32(test_p2wsh);
+
+            //verify checksum fails                  ↓ this 'a' is supposed to be 'r'
+            var check_fail = "bc1qw508d6qejxtdg4y5r3aarvary0c5xw7kv8f3t4";
+            Assert.ThrowsAny<Exception>(() => new Bech32(check_fail));
+        }
+
+        [Fact]
+        public void Bech32_Encode()
+        {
+            var bc1 = new Bech32("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4");
+
+            var addr = new Bech32Address(bc1.Hrp, 0, bc1.DataBytes);
+
+            Assert.Equal("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4", addr.ToString());
+        }
+
+        [Fact(Skip = "no_node")]
         public void Parse_Last_100_Blocks()
         {
             var best_block_hash = Util.GetBestBlockHash();

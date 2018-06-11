@@ -54,7 +54,7 @@ namespace hashstream.bitcoin_lib.P2P
             UserAgentLength.ReadFromPayload(data, offset + 80);
 
             var noffset = offset + 80 + UserAgentLength.Size;
-            UserAgent = Encoding.ASCII.GetString(data, noffset, UserAgentLength);
+            UserAgent = System.Text.Encoding.ASCII.GetString(data, noffset, UserAgentLength);
             StartHeight = BitConverter.ToUInt32(data, noffset + UserAgentLength);
             Relay = BitConverter.ToBoolean(data, noffset + UserAgentLength + 4);
         }
@@ -98,7 +98,7 @@ namespace hashstream.bitcoin_lib.P2P
             var ul = UserAgentLength.ToArray();
             Array.Copy(ul, 0, pl, 80, ul.Length);
 
-            var ua = Encoding.ASCII.GetBytes(UserAgent);
+            var ua = System.Text.Encoding.ASCII.GetBytes(UserAgent);
             Array.Copy(ua, 0, pl, 80 + UserAgentLength.Size, ua.Length);
 
             var sh = BitConverter.GetBytes(StartHeight);

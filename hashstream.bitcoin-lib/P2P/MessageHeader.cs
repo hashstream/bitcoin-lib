@@ -48,7 +48,7 @@ namespace hashstream.bitcoin_lib.P2P
         public void ReadFromPayload(byte[] header, int offset)
         {
             Magic = BitConverter.ToUInt32(header, offset);
-            Command = Encoding.ASCII.GetString(header, offset + 4, 12);
+            Command = System.Text.Encoding.ASCII.GetString(header, offset + 4, 12);
             PayloadSize = BitConverter.ToUInt32(header, offset + 16);
             Checksum = new byte[] { header[20], header[21], header[22], header[23] };
         }
@@ -58,7 +58,7 @@ namespace hashstream.bitcoin_lib.P2P
             var pl = new byte[][]
             {
                 BitConverter.GetBytes(Magic),
-                Encoding.ASCII.GetBytes(Command),
+                System.Text.Encoding.ASCII.GetBytes(Command),
                 new byte[12-Command.Length],
                 BitConverter.GetBytes(PayloadSize),
                 Checksum

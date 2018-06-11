@@ -53,5 +53,13 @@ namespace hashstream.bitcoin_lib
                 goto read_more;
             }
         }
+
+        public static T[] Concat<T>(this T[] a, T[] b)
+        {
+            var ret = new T[a.Length + b.Length];
+            Array.Copy(a, ret, a.Length);
+            Array.Copy(b, 0, ret, a.Length, b.Length);
+            return ret;
+        }
     }
 }
