@@ -98,16 +98,23 @@ namespace lib_test
         }
 
         [Fact]
-        public void Bech32_Encode()
+        public void Bech32Address_Decode()
         {
-            var bc1 = new Bech32("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4");
+            var bc1 = new Bech32Address("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4");
 
-            var addr = new Bech32Address(bc1.Hrp, 0, bc1.DataBytes);
-
-            Assert.Equal("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4", addr.ToString());
+            Assert.Equal("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4", bc1.ToString());
         }
 
-        [Fact(Skip = "no_node")]
+        [Fact]
+        public void Bech32Address_Encode()
+        {
+            var bc1 = new Bech32Address("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4");
+            var bc2 = new Bech32Address(bc1.Hrp, bc1.WitnessVersion, bc1.WitnessProgram);
+
+            Assert.Equal("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4", bc2.ToString());
+        }
+
+        /*[Fact(Skip = "no_node")]
         public void Parse_Last_100_Blocks()
         {
             var best_block_hash = Util.GetBestBlockHash();
@@ -121,6 +128,6 @@ namespace lib_test
 
                 best_block_hash = block_parsed.Header.PrevBlock;
             }
-        }
+        }*/
     }
 }

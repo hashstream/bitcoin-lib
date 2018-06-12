@@ -72,15 +72,5 @@ namespace hashstream.bitcoin_lib.BlockChain
         {
             return b.ToString();
         }
-
-        public static bool operator ==(Hash h, string s)
-        {
-            return new Hash(s) == h;
-        }
-
-        public static bool operator !=(Hash h, string s)
-        {
-            return new Hash(s) != h;
-        }
     }
 }
