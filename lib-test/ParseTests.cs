@@ -1,6 +1,7 @@
 ﻿using hashstream.bitcoin_lib;
 using hashstream.bitcoin_lib.BlockChain;
 using hashstream.bitcoin_lib.Encoding;
+using hashstream.bitcoin_lib.Script;
 using System;
 using System.Diagnostics;
 using System.Linq;
@@ -112,6 +113,44 @@ namespace lib_test
             var bc2 = new Bech32Address(bc1.Hrp, bc1.WitnessVersion, bc1.WitnessProgram);
 
             Assert.Equal("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4", bc2.ToString());
+        }
+
+        [Fact]
+        public void CScript_Parse_Standard()
+        {
+            //human readable tests
+            var test_hr = new string[][]
+            {
+                //P2PKH
+                new string[] { "76a91489abcdefabbaabbaabbaabbaabbaabbaabbaabba88ac", "OP_DUP OP_HASH160 89abcdefabbaabbaabbaabbaabbaabbaabbaabba OP_EQUALVERIFY OP_CHECKSIG" },
+                //P2SH
+                new string[] { "a9143130913658056d961c7d73b0ce32e1f2ab565ea887", "OP_HASH160 3130913658056d961c7d73b0ce32e1f2ab565ea8 OP_EQUAL" },
+                //coinbase output from block height 1 (P2PK)
+                new string[] { "410496b538e853519c726a2c91e61ec11600ae1390813a627c66fb8be7947be63c52da7589379515d4e0a604f8141781e62294721166bf621e73a82cbf2342c858eeac", "0496b538e853519c726a2c91e61ec11600ae1390813a627c66fb8be7947be63c52da7589379515d4e0a604f8141781e62294721166bf621e73a82cbf2342c858ee OP_CHECKSIG" },
+                //P2WSH
+                new string[] { "0020701a8d401c84fb13e6baf169d59684e17abd9fa216c8cc5b9fc63d622ff8c58d", "OP_0 701a8d401c84fb13e6baf169d59684e17abd9fa216c8cc5b9fc63d622ff8c58d" }
+            };
+           
+            foreach(var hrt in test_hr)
+            {
+                var cs = new CScript(hrt[0].FromHex());
+
+                Assert.Equal(hrt[1], cs.ToString());
+            }
+        }
+
+        [Fact]
+        public void Verify_Witness_Script()
+        {
+            //txid: bb52a350bb27191522573d1d5b79cf5f503c918e05988b04085774dc816c444d
+            var tx = "0100000000010139e82f99965dce11ee96fbe484f9f31cb7854910100734b205708809bc31a9480800000000ffffffff02c0336c04000000001976a9140185b799d6b09d74515f6b6101798000e190308888acb0a01b0c00000000220020701a8d401c84fb13e6baf169d59684e17abd9fa216c8cc5b9fc63d622ff8c58d0400483045022100b054fb57517fea8a7806f60510c8d94e86e1f66e33ffb80ca5ff41e31abb72a202207d72428da2aef2f04a9b0af1e5bae8245595441de0995dbb3caa082c29a2c2ca0147304402203b873c6b048295a114e90d31a9f4a78a6e03a9caf94f14d05542b8d17975671c02200532f3b4653bcf72f2c3c39629c87af131949fbdcad5add868a9628990734084016952210375e00eb72e29da82b89367947f29ef34afb75e8654f6ea368e0acdfd92976b7c2103a1b26313f430c4b15bb1fdce663207659d8cac749a0e53d70eff01874496feff2103c96d495bfdd5ba4145e3e046fee45e84a8a48ad05bd8dbb395c011a32cf9f88053ae00000000".FromHex();
+            var tx_parsed = new Tx();
+            tx_parsed.ReadFromPayload(tx, 0);
+
+            if(tx_parsed != null)
+            {
+
+            }
         }
 
         /*[Fact(Skip = "no_node")]
