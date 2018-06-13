@@ -9,8 +9,8 @@ namespace hashstream.bitcoin_lib.BlockChain
     public class TxIn : IStreamable
     {
         public Outpoint Previous { get; set; }
-        public CScript Script { get; set; }
-        public WitnessScripts WitnessScripts { get; set; }
+        public StandardScript Script { get; set; }
+        public WitnessScript WitnessScripts { get; set; }
         public UInt32 Sequence { get; set; } = 0xffffffff;
 
         public int Size => 40 + Script.Size;
@@ -20,10 +20,10 @@ namespace hashstream.bitcoin_lib.BlockChain
             Previous = new Outpoint();
             Previous.ReadFromPayload(data, offset);
 
-            Script = new CScript();
+            Script = new StandardScript();
             Script.ReadFromPayload(data, offset + Previous.Size);
 
-            Sequence = BitConverter.ToUInt32(data, offset + Previous.Size + Script.Size);
+            Sequence = BitConverter.ToUInt32(data, (int)(offset + Previous.Size + Script.Size));
         }
 
         public byte[] ToArray()

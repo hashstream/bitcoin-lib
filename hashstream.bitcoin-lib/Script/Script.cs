@@ -7,36 +7,30 @@ using System.Security.Cryptography;
 
 namespace hashstream.bitcoin_lib.Script
 {
-    public class CScript : IStreamable
+    public class Script : IStreamable
     {
-        // Maximum number of bytes pushable to the stack
         static uint MAX_SCRIPT_ELEMENT_SIZE => 520;
-
-        // Maximum number of non-push operations per script
         static int MAX_OPS_PER_SCRIPT => 201;
-
-        // Maximum number of public keys per multisig
         static int MAX_PUBKEYS_PER_MULTISIG => 20;
-
-        // Maximum script length in bytes
         static int MAX_SCRIPT_SIZE => 10000;
-
-        // Maximum number of values on script interpreter stack
         static int MAX_STACK_SIZE => 1000;
 
-        public VarInt Length { get; private set; }
-        public byte[] ScriptBytes { get; private set; }
-        public CScriptFrame[] ParsedScript { get; private set; }
+        public VarInt Length { get; internal set; }
+        public byte[] ScriptBytes { get; internal set; }
+        public ScriptFrame[] ParsedScript { get; internal set; }
         public int Size => Length + Length.Size;
 
-        public CScript() { }
+        public Script() { }
 
-        public CScript(byte[] data)
+        public Script(byte[] data, bool parse = true)
         {
             ScriptBytes = data;
             Length = new VarInt((ulong)data.LongLength);
 
-            ParsedScript = ParseScript(ScriptBytes);
+            if (parse)
+            {
+                ParsedScript = ParseScript(ScriptBytes);
+            }
         }
 
         public void ReadFromPayload(byte[] data, int offset)
@@ -57,10 +51,10 @@ namespace hashstream.bitcoin_lib.Script
             return ret;
         }
 
-        public bool ValidateRedeemScript(CScript s)
+        public bool ValidateRedeemScript(Script scriptSig)
         {
-            var script = new List<CScriptFrame>();
-            script.AddRange(s.ParsedScript);
+            var script = new List<ScriptFrame>();
+            script.AddRange(scriptSig.ParsedScript);
             script.AddRange(ParsedScript);
 
             var tf = ValidateParsedScript(script.ToArray());
@@ -72,10 +66,10 @@ namespace hashstream.bitcoin_lib.Script
         /// </summary>
         /// <param name="script">The parsed script to run</param>
         /// <returns>Top stack value</returns>
-        public CScriptFrame ValidateParsedScript(CScriptFrame[] script)
+        public ScriptFrame ValidateParsedScript(ScriptFrame[] script)
         {
-            var stack = new Stack<CScriptFrame>();
-            var alt_stack = new Stack<CScriptFrame>();
+            var stack = new Stack<ScriptFrame>();
+            var alt_stack = new Stack<ScriptFrame>();
 
             for (var x = 0; x < script.Length; x++)
             {
@@ -171,7 +165,7 @@ namespace hashstream.bitcoin_lib.Script
                         case OpCode.OP_PICK:
                             {
                                 var z = stack.Pop();
-                                var zstack = new Stack<CScriptFrame>();
+                                var zstack = new Stack<ScriptFrame>();
                                 for (var y = 1; y < z.Number; y++)
                                 {
                                     zstack.Push(stack.Pop());
@@ -188,7 +182,7 @@ namespace hashstream.bitcoin_lib.Script
                         case OpCode.OP_ROLL:
                             {
                                 var z = stack.Pop();
-                                var zstack = new Stack<CScriptFrame>();
+                                var zstack = new Stack<ScriptFrame>();
                                 for (var y = 1; y < z.Number; y++)
                                 {
                                     zstack.Push(stack.Pop());
@@ -513,21 +507,23 @@ namespace hashstream.bitcoin_lib.Script
                                 }
                                 break;
                             }
+                        case OpCode.OP_CHECKSIGVERIFY:
                         case OpCode.OP_CHECKSIG:
                             {
                                 var pubkey = stack.Pop();
                                 var sig = stack.Pop();
 
                                 //hmm needs external lib... secp256k1 not implemented in .NET core
-                                throw new NotImplementedException();
-                                break;
-                            }
-                        case OpCode.OP_CHECKSIGVERIFY:
-                            {
-                                var pubkey = stack.Pop();
-                                var sig = stack.Pop();
+                                stack.Push(1);
 
-                                //hmm needs external lib... secp256k1 not implemented in .NET core
+                                if (fx.Op == OpCode.OP_CHECKSIGVERIFY)
+                                {
+                                    if (stack.Pop())
+                                    {
+                                        return 1;
+                                    }
+                                }
+
                                 throw new NotImplementedException();
                                 break;
                             }
@@ -535,8 +531,8 @@ namespace hashstream.bitcoin_lib.Script
                         case OpCode.OP_CHECKMULTISIG:
                             {
                                 var nsig = stack.Pop();
-                                var pubkeys = new CScriptFrame[nsig];
-                                var sigs = new CScriptFrame[nsig];
+                                var pubkeys = new ScriptFrame[nsig];
+                                var sigs = new ScriptFrame[nsig];
 
                                 //load keys
                                 for(var z = nsig; z > 0; z--)
@@ -573,9 +569,9 @@ namespace hashstream.bitcoin_lib.Script
             return stack.Pop();
         }
 
-        public static CScriptFrame[] ParseScript(byte[] data)
+        public static ScriptFrame[] ParseScript(byte[] data)
         {
-            var ret = new List<CScriptFrame>();
+            var ret = new List<ScriptFrame>();
 
             if (data.Length > 0)
             {
@@ -593,7 +589,7 @@ namespace hashstream.bitcoin_lib.Script
                     }
                     else
                     {
-                        ret.Add(new CScriptFrame(op));
+                        ret.Add(new ScriptFrame(op));
                     }
 
                     switch (op)
@@ -612,7 +608,7 @@ namespace hashstream.bitcoin_lib.Script
                                 var hdata = new byte[len];
                                 Array.Copy(data, datastart, hdata, 0, hdata.Length);
 
-                                ret.Add(new CScriptFrame(hdata));
+                                ret.Add(new ScriptFrame(hdata));
                                 x += len + 1;
                                 break;
                             }
@@ -625,7 +621,14 @@ namespace hashstream.bitcoin_lib.Script
 
         public override string ToString()
         {
-            return string.Join<CScriptFrame>(" ", ParsedScript);
+            if(ParsedScript != null && ParsedScript.Length > 0)
+            {
+                return string.Join<ScriptFrame>(" ", ParsedScript);
+            }
+            else
+            {
+                return BitConverter.ToString(ScriptBytes).Replace("-", "").ToLower();
+            }
         }
     }
 

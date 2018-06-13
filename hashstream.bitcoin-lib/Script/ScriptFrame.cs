@@ -10,7 +10,7 @@ namespace hashstream.bitcoin_lib.Script
         Number
     }
 
-    public class CScriptFrame
+    public class ScriptFrame
     {
         public CScriptFrameType Type { get; private set; }
         public OpCode Op { get; private set; }
@@ -34,19 +34,19 @@ namespace hashstream.bitcoin_lib.Script
             }
         }
 
-        public CScriptFrame(OpCode op)
+        public ScriptFrame(OpCode op)
         {
             Op = op;
             Type = CScriptFrameType.OpCode;
         }
 
-        public CScriptFrame(byte[] data)
+        public ScriptFrame(byte[] data)
         {
             Data = data;
             Type = CScriptFrameType.Data;
         }
 
-        public CScriptFrame(Int32 num)
+        public ScriptFrame(Int32 num)
         {
             Number = num;
             Type = CScriptFrameType.Number;
@@ -68,31 +68,31 @@ namespace hashstream.bitcoin_lib.Script
             }
         }
 
-        public static CScriptFrame operator +(CScriptFrame a, CScriptFrame b)
+        public static ScriptFrame operator +(ScriptFrame a, ScriptFrame b)
         {
             if (a.IsNumber && b.IsNumber)
             {
-                return new CScriptFrame(a.Number + b.Number);
+                return new ScriptFrame(a.Number + b.Number);
             }
             throw new Exception($"Cannot add non number frames Type-A={a.Type.ToString()} Type-B={b.Type.ToString()}");
         }
 
-        public static CScriptFrame operator -(CScriptFrame a, CScriptFrame b)
+        public static ScriptFrame operator -(ScriptFrame a, ScriptFrame b)
         {
             if (a.IsNumber && b.IsNumber)
             {
-                return new CScriptFrame(a.Number - b.Number);
+                return new ScriptFrame(a.Number - b.Number);
             }
             throw new Exception($"Cannot add non number frames Type-A={a.Type.ToString()} Type-B={b.Type.ToString()}");
         }
 
         //Implicit operators
-        public static implicit operator CScriptFrame(int s)
+        public static implicit operator ScriptFrame(int s)
         {
-            return new CScriptFrame(s);
+            return new ScriptFrame(s);
         }
 
-        public static implicit operator int(CScriptFrame s)
+        public static implicit operator int(ScriptFrame s)
         {
             if (s.IsNumber)
             {
@@ -101,12 +101,12 @@ namespace hashstream.bitcoin_lib.Script
             throw new Exception($"Cannot convert non int frame to int Type={s.Type.ToString()}");
         }
 
-        public static implicit operator CScriptFrame(bool s)
+        public static implicit operator ScriptFrame(bool s)
         {
-            return new CScriptFrame(s ? 1 : 0);
+            return new ScriptFrame(s ? 1 : 0);
         }
 
-        public static implicit operator bool(CScriptFrame s)
+        public static implicit operator bool(ScriptFrame s)
         {
             if (s.IsNumber)
             {
@@ -115,12 +115,12 @@ namespace hashstream.bitcoin_lib.Script
             throw new Exception($"Cannot convert non int frame to bool Type={s.Type.ToString()}");
         }
 
-        public static implicit operator CScriptFrame(OpCode o)
+        public static implicit operator ScriptFrame(OpCode o)
         {
-            return new CScriptFrame(o);
+            return new ScriptFrame(o);
         }
 
-        public static implicit operator OpCode(CScriptFrame o)
+        public static implicit operator OpCode(ScriptFrame o)
         {
             if (o.IsOp)
             {
@@ -129,12 +129,12 @@ namespace hashstream.bitcoin_lib.Script
             throw new Exception($"Cannot convert non opcode frame to opcode Type={o.Type.ToString()}");
         }
 
-        public static implicit operator CScriptFrame(byte[] o)
+        public static implicit operator ScriptFrame(byte[] o)
         {
-            return new CScriptFrame(o);
+            return new ScriptFrame(o);
         }
 
-        public static implicit operator byte[] (CScriptFrame o)
+        public static implicit operator byte[] (ScriptFrame o)
         {
             if (o.IsData)
             {
@@ -143,12 +143,12 @@ namespace hashstream.bitcoin_lib.Script
             throw new Exception($"Cannot convert non data frame to data Type={o.Type.ToString()}");
         }
 
-        public static implicit operator CScriptFrame(string s)
+        public static implicit operator ScriptFrame(string s)
         {
-            return new CScriptFrame(System.Text.Encoding.UTF8.GetBytes(s));
+            return new ScriptFrame(System.Text.Encoding.UTF8.GetBytes(s));
         }
 
-        public static implicit operator string(CScriptFrame s)
+        public static implicit operator string(ScriptFrame s)
         {
             if (s.IsData)
             {
@@ -160,9 +160,9 @@ namespace hashstream.bitcoin_lib.Script
         //comparators
         public override bool Equals(object obj)
         {
-            if (obj is CScriptFrame)
+            if (obj is ScriptFrame)
             {
-                var b = (CScriptFrame)obj;
+                var b = (ScriptFrame)obj;
                 if (IsOp && b.IsOp)
                 {
                     return Op == b.Op;

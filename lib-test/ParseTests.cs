@@ -69,7 +69,7 @@ namespace lib_test
 
             var satoshi = "The Times 03/Jan/2009 Chancellor on brink of second bailout for bank";
 
-            Assert.Contains(satoshi, Encoding.UTF8.GetString(block_parsed.Txns[0].TxIn[0].Script.ScriptBytes));
+            Assert.Contains(satoshi, Encoding.UTF8.GetString((byte[])block_parsed.Txns[0].TxIn[0].Script.ScriptBytes));
         }
 
         [Fact]
@@ -143,7 +143,7 @@ namespace lib_test
            
             foreach(var hrt in test_hr)
             {
-                var cs = new CScript(hrt[0].FromHex());
+                var cs = new Script(hrt[0].FromHex());
 
                 Assert.Equal(hrt[1], cs.ToString());
             }
@@ -168,7 +168,7 @@ namespace lib_test
         {
             //scriptdata, result
             //CScriptFrame can be (OpCode/int32/byte[]/string)
-            var tests = new Dictionary<byte[], CScriptFrame>()
+            var tests = new Dictionary<byte[], ScriptFrame>()
             {
                 //OP_1 OP_1 OP_1ADD OP_ADD OP_3 OP_NUMEQUAL
                 { "51518b93539c".FromHex(), 1 }, 
@@ -180,13 +180,19 @@ namespace lib_test
 
             foreach(var t in tests)
             {
-                var cs = new CScript(t.Key);
+                var cs = new Script(t.Key);
                 output.WriteLine($"Testing script: {cs.ToString()}");
 
                 var res = cs.ValidateParsedScript(cs.ParsedScript);
                 
                 Assert.Equal(t.Value, res);
             }
+        }
+
+        [Fact]
+        public void CScript_Bitcoin_Tests()
+        {
+            //https://raw.githubusercontent.com/bitcoin/bitcoin/master/src/test/data/tx_valid.json
         }
 
 #if WITH_LIVE_TEST_TEST

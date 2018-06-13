@@ -1,4 +1,5 @@
 ﻿using hashstream.bitcoin_lib.P2P;
+using hashstream.bitcoin_lib.Script;
 using System;
 using System.Linq;
 
@@ -80,7 +81,7 @@ namespace hashstream.bitcoin_lib.BlockChain
                 foreach(var tx in TxIn)
                 {
                     //read the len
-                    tx.WitnessScripts = new WitnessScripts();
+                    tx.WitnessScripts = new WitnessScript();
                     tx.WitnessScripts.ReadFromPayload(data, readoffset);
 
                     readoffset += tx.WitnessScripts.TotalLength;

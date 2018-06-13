@@ -7,7 +7,7 @@ namespace hashstream.bitcoin_lib.BlockChain
     public class TxOut : IStreamable
     {
         public UInt64 Value { get; set; }
-        public CScript RedeemScript { get; set; }
+        public StandardScript RedeemScript { get; set; }
 
         public int Size => 8 + RedeemScript.Size;
 
@@ -15,7 +15,7 @@ namespace hashstream.bitcoin_lib.BlockChain
         {
             Value = BitConverter.ToUInt64(data, offset);
 
-            RedeemScript = new CScript();
+            RedeemScript = new StandardScript();
             RedeemScript.ReadFromPayload(data, offset + 8);
         }
 
