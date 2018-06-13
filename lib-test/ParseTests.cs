@@ -3,15 +3,25 @@ using hashstream.bitcoin_lib.BlockChain;
 using hashstream.bitcoin_lib.Encoding;
 using hashstream.bitcoin_lib.Script;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace lib_test
 {
     public class ParseTests
     {
+
+        private readonly ITestOutputHelper output;
+
+        public ParseTests(ITestOutputHelper outputHelper)
+        {
+            output = outputHelper;
+        }
+
         [Fact]
         public void Segwit_TX_Parse()
         {
@@ -59,7 +69,7 @@ namespace lib_test
 
             var satoshi = "The Times 03/Jan/2009 Chancellor on brink of second bailout for bank";
 
-            Assert.Contains(satoshi, Encoding.UTF8.GetString(block_parsed.Txns[0].TxIn[0].Script));
+            Assert.Contains(satoshi, Encoding.UTF8.GetString(block_parsed.Txns[0].TxIn[0].Script.ScriptBytes));
         }
 
         [Fact]
@@ -116,7 +126,7 @@ namespace lib_test
         }
 
         [Fact]
-        public void CScript_Parse_Standard()
+        public void CScript_Parse_Standard_RedeemScript()
         {
             //human readable tests
             var test_hr = new string[][]
@@ -153,7 +163,34 @@ namespace lib_test
             }
         }
 
-        /*[Fact(Skip = "no_node")]
+        [Fact]
+        public void CScript_Basic_Tests()
+        {
+            //scriptdata, result
+            //CScriptFrame can be (OpCode/int32/byte[]/string)
+            var tests = new Dictionary<byte[], CScriptFrame>()
+            {
+                //OP_1 OP_1 OP_1ADD OP_ADD OP_3 OP_NUMEQUAL
+                { "51518b93539c".FromHex(), 1 }, 
+                //"hello world!" OP_RIPEMD160 <hash> OP_EQUAL
+                { "0c68656c6c6f20776f726c6421a614dffd03137b3a333d5754813399a5f437acd694e587".FromHex(), 1 },
+                //"hello world!" OP_SHA256 <hash> OP_EQUAL
+                { "0c68656c6c6f20776f726c6421a8207509e5bda0c762d2bac7f90d758b5b2263fa01ccbc542ab5e3df163be08e6ca987".FromHex(), 1 }
+            };
+
+            foreach(var t in tests)
+            {
+                var cs = new CScript(t.Key);
+                output.WriteLine($"Testing script: {cs.ToString()}");
+
+                var res = cs.ValidateParsedScript(cs.ParsedScript);
+                
+                Assert.Equal(t.Value, res);
+            }
+        }
+
+#if WITH_LIVE_TEST_TEST
+        [Fact]
         public void Parse_Last_100_Blocks()
         {
             var best_block_hash = Util.GetBestBlockHash();
@@ -167,6 +204,7 @@ namespace lib_test
 
                 best_block_hash = block_parsed.Header.PrevBlock;
             }
-        }*/
+        }
+#endif
     }
 }

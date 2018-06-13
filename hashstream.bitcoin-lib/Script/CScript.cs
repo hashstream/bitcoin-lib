@@ -1,56 +1,12 @@
 ﻿using hashstream.bitcoin_lib.BlockChain;
+using hashstream.bitcoin_lib.Crypto;
 using hashstream.bitcoin_lib.P2P;
 using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 
 namespace hashstream.bitcoin_lib.Script
 {
-    public class CScriptFrame
-    {
-        public OpCode Op { get; set; }
-        public bool IsOp { get; set; }
-
-        public byte[] Data { get; set; }
-        public bool IsData { get; set; }
-
-        public Int32 Number { get; set; }
-        public bool IsNumber { get; set; }
-
-        public CScriptFrame(OpCode op)
-        {
-            Op = op;
-            IsOp = true;
-        }
-
-        public CScriptFrame(byte[] data)
-        {
-            Data = data;
-            IsData = true;
-        }
-
-        public CScriptFrame(Int32 num)
-        {
-            Number = num;
-            IsNumber = true;
-        }
-
-        public override string ToString()
-        {
-            if (IsOp)
-            {
-                return Op.ToString();
-            }
-            else if (IsNumber)
-            {
-                return Number.ToString();
-            }
-            else
-            {
-                return BitConverter.ToString(Data).Replace("-", "").ToLower();
-            }
-        }
-    }
-
     public class CScript : IStreamable
     {
         // Maximum number of bytes pushable to the stack
@@ -68,19 +24,19 @@ namespace hashstream.bitcoin_lib.Script
         // Maximum number of values on script interpreter stack
         static int MAX_STACK_SIZE => 1000;
 
-        public VarInt Length { get; set; }
-        public byte[] Script { get; set; }
-
-        public CScriptFrame[] ParsedScript { get; set; }
+        public VarInt Length { get; private set; }
+        public byte[] ScriptBytes { get; private set; }
+        public CScriptFrame[] ParsedScript { get; private set; }
+        public int Size => Length + Length.Size;
 
         public CScript() { }
 
         public CScript(byte[] data)
         {
-            Script = data;
+            ScriptBytes = data;
             Length = new VarInt((ulong)data.LongLength);
 
-            ParsedScript = ParseScript();
+            ParsedScript = ParseScript(ScriptBytes);
         }
 
         public void ReadFromPayload(byte[] data, int offset)
@@ -88,15 +44,15 @@ namespace hashstream.bitcoin_lib.Script
             Length = new VarInt(0);
             Length.ReadFromPayload(data, offset);
 
-            Script = new byte[Length];
-            Array.Copy(data, offset + Length.Size, Script, 0, Script.Length);
+            ScriptBytes = new byte[Length];
+            Array.Copy(data, offset + Length.Size, ScriptBytes, 0, ScriptBytes.Length);
         }
 
         public byte[] ToArray()
         {
             var ret = new byte[Length.Size + Length];
             Array.Copy(Length.ToArray(), ret, Length.Size);
-            Array.Copy(Script, 0, ret, Length.Size, Script.Length);
+            Array.Copy(ScriptBytes, 0, ret, Length.Size, ScriptBytes.Length);
 
             return ret;
         }
@@ -107,19 +63,25 @@ namespace hashstream.bitcoin_lib.Script
             script.AddRange(s.ParsedScript);
             script.AddRange(ParsedScript);
 
-            return ValidateParsedScript(script);
+            var tf = ValidateParsedScript(script.ToArray());
+            return tf.Number == 1;
         }
 
-        public bool ValidateParsedScript(List<CScriptFrame> script)
+        /// <summary>
+        /// Runs a parsed script and returns the top stack value
+        /// </summary>
+        /// <param name="script">The parsed script to run</param>
+        /// <returns>Top stack value</returns>
+        public CScriptFrame ValidateParsedScript(CScriptFrame[] script)
         {
             var stack = new Stack<CScriptFrame>();
             var alt_stack = new Stack<CScriptFrame>();
 
-            for (var x = 0; x < script.Count; x++)
+            for (var x = 0; x < script.Length; x++)
             {
                 var fx = script[x];
 
-                if (fx.IsData || fx.IsNumber)
+                if (!fx.IsOp)
                 {
                     stack.Push(fx);
                 }
@@ -128,23 +90,23 @@ namespace hashstream.bitcoin_lib.Script
                     switch (fx.Op)
                     {
                         // push constants
-                        case OpCode.OP_1NEGATE: stack.Push(new CScriptFrame(-1)); break;
-                        case OpCode.OP_1: stack.Push(new CScriptFrame(1)); break;
-                        case OpCode.OP_2: stack.Push(new CScriptFrame(2)); break;
-                        case OpCode.OP_3: stack.Push(new CScriptFrame(3)); break;
-                        case OpCode.OP_4: stack.Push(new CScriptFrame(4)); break;
-                        case OpCode.OP_5: stack.Push(new CScriptFrame(5)); break;
-                        case OpCode.OP_6: stack.Push(new CScriptFrame(6)); break;
-                        case OpCode.OP_7: stack.Push(new CScriptFrame(7)); break;
-                        case OpCode.OP_8: stack.Push(new CScriptFrame(8)); break;
-                        case OpCode.OP_9: stack.Push(new CScriptFrame(9)); break;
-                        case OpCode.OP_10: stack.Push(new CScriptFrame(10)); break;
-                        case OpCode.OP_11: stack.Push(new CScriptFrame(11)); break;
-                        case OpCode.OP_12: stack.Push(new CScriptFrame(12)); break;
-                        case OpCode.OP_13: stack.Push(new CScriptFrame(13)); break;
-                        case OpCode.OP_14: stack.Push(new CScriptFrame(14)); break;
-                        case OpCode.OP_15: stack.Push(new CScriptFrame(15)); break;
-                        case OpCode.OP_16: stack.Push(new CScriptFrame(16)); break;
+                        case OpCode.OP_1NEGATE: stack.Push(-1); break;
+                        case OpCode.OP_1: stack.Push(1); break;
+                        case OpCode.OP_2: stack.Push(2); break;
+                        case OpCode.OP_3: stack.Push(3); break;
+                        case OpCode.OP_4: stack.Push(4); break;
+                        case OpCode.OP_5: stack.Push(5); break;
+                        case OpCode.OP_6: stack.Push(6); break;
+                        case OpCode.OP_7: stack.Push(7); break;
+                        case OpCode.OP_8: stack.Push(8); break;
+                        case OpCode.OP_9: stack.Push(9); break;
+                        case OpCode.OP_10: stack.Push(10); break;
+                        case OpCode.OP_11: stack.Push(11); break;
+                        case OpCode.OP_12: stack.Push(12); break;
+                        case OpCode.OP_13: stack.Push(13); break;
+                        case OpCode.OP_14: stack.Push(14); break;
+                        case OpCode.OP_15: stack.Push(15); break;
+                        case OpCode.OP_16: stack.Push(16); break;
 
                         //flow control
                         //TODO: this..
@@ -154,11 +116,22 @@ namespace hashstream.bitcoin_lib.Script
                         case OpCode.OP_NOTIF:
                         case OpCode.OP_ELSE:
                             {
-                                //take everything off, will implement later
-                                CScriptFrame f = stack.Peek();
-                                while(!f.IsOp || (f.IsOp && f.Op != OpCode.OP_ENDIF))
+                                //search script for endif
+                                for (var z = x; z < script.Length; z++)
                                 {
-                                    f = stack.Pop();
+                                    if (script[z].IsOp && script[x].Op == OpCode.OP_ENDIF)
+                                    {
+                                        x = z;
+                                        break;
+                                    }
+                                }
+                                break;
+                            }
+                        case OpCode.OP_VERIFY:
+                            {
+                                if (!stack.Pop())
+                                {
+                                    return 0;
                                 }
                                 break;
                             }
@@ -167,11 +140,12 @@ namespace hashstream.bitcoin_lib.Script
                         case OpCode.OP_TOALTSTACK: alt_stack.Push(stack.Pop()); break;
                         case OpCode.OP_FROMALTSTACK: stack.Push(alt_stack.Pop()); break;
                         case OpCode.OP_DROP: stack.Pop(); break;
+                        case OpCode.OP_2DROP: stack.Pop(); stack.Pop(); break;
                         case OpCode.OP_DUP: stack.Push(stack.Peek()); break;
                         case OpCode.OP_IFDUP:
                             {
                                 var eval = stack.Pop();
-                                if(eval.IsNumber && eval.Number != 0)
+                                if (eval.IsNumber && eval.Number != 0)
                                 {
                                     stack.Push(eval);
                                     stack.Push(eval);
@@ -198,43 +172,424 @@ namespace hashstream.bitcoin_lib.Script
                             {
                                 var z = stack.Pop();
                                 var zstack = new Stack<CScriptFrame>();
-                                for(var y = 1; y < z.Number; y++)
+                                for (var y = 1; y < z.Number; y++)
                                 {
                                     zstack.Push(stack.Pop());
                                 }
 
                                 var n = stack.Peek();
-                                foreach(var s in zstack)
+                                foreach (var s in zstack)
                                 {
                                     stack.Push(s);
                                 }
                                 stack.Push(n);
                                 break;
                             }
+                        case OpCode.OP_ROLL:
+                            {
+                                var z = stack.Pop();
+                                var zstack = new Stack<CScriptFrame>();
+                                for (var y = 1; y < z.Number; y++)
+                                {
+                                    zstack.Push(stack.Pop());
+                                }
+
+                                var n = stack.Pop();
+                                foreach (var s in zstack)
+                                {
+                                    stack.Push(s);
+                                }
+                                stack.Push(n);
+                                break;
+                            }
+                        case OpCode.OP_ROT:
+                            {
+                                var a = stack.Pop();
+                                var b = stack.Pop();
+                                var c = stack.Pop();
+
+                                stack.Push(b);
+                                stack.Push(a);
+                                stack.Push(c);
+                                break;
+                            }
+                        case OpCode.OP_SWAP:
+                            {
+                                var a = stack.Pop();
+                                var b = stack.Pop();
+                                stack.Push(a);
+                                stack.Push(b);
+                                break;
+                            }
+                        case OpCode.OP_TUCK:
+                            {
+                                var a = stack.Pop();
+                                var b = stack.Pop();
+                                stack.Push(a);
+                                stack.Push(b);
+                                stack.Push(a);
+                                break;
+                            }
+                        case OpCode.OP_2DUP:
+                            {
+                                var a = stack.Pop();
+                                var b = stack.Pop();
+                                stack.Push(b);
+                                stack.Push(a);
+                                stack.Push(b);
+                                stack.Push(a);
+                                break;
+                            }
+                        case OpCode.OP_3DUP:
+                            {
+                                var a = stack.Pop();
+                                var b = stack.Pop();
+                                var c = stack.Pop();
+                                stack.Push(c);
+                                stack.Push(b);
+                                stack.Push(a);
+                                stack.Push(c);
+                                stack.Push(b);
+                                stack.Push(a);
+                                break;
+                            }
+                        case OpCode.OP_2OVER:
+                            {
+                                var a = stack.Pop();
+                                var b = stack.Pop();
+                                var c = stack.Pop();
+                                var d = stack.Pop();
+                                stack.Push(d);
+                                stack.Push(c);
+                                stack.Push(b);
+                                stack.Push(a);
+                                stack.Push(d);
+                                stack.Push(c);
+                                break;
+                            }
+                        case OpCode.OP_2ROT:
+                            {
+                                var a = stack.Pop();
+                                var b = stack.Pop();
+                                var c = stack.Pop();
+                                var d = stack.Pop();
+                                var e = stack.Pop();
+                                var f = stack.Pop();
+                                stack.Push(d);
+                                stack.Push(c);
+                                stack.Push(b);
+                                stack.Push(a);
+                                stack.Push(f);
+                                stack.Push(e);
+                                break;
+                            }
+                        case OpCode.OP_2SWAP:
+                            {
+                                var a = stack.Pop();
+                                var b = stack.Pop();
+                                var c = stack.Pop();
+                                var d = stack.Pop();
+                                stack.Push(b);
+                                stack.Push(a);
+                                stack.Push(d);
+                                stack.Push(c);
+                                break;
+                            }
+
+                        //splice
+                        case OpCode.OP_CAT:
+                        case OpCode.OP_SUBSTR:
+                        case OpCode.OP_LEFT:
+                        case OpCode.OP_RIGHT: throw new Exception($"Disabled script op {fx.Op.ToString()}");
+                        case OpCode.OP_SIZE: { var s = stack.Peek(); stack.Push(s.Length); break; }
+
+                        //bitwise logic
+                        case OpCode.OP_INVERT:
+                        case OpCode.OP_AND:
+                        case OpCode.OP_OR:
+                        case OpCode.OP_XOR: throw new Exception($"Disabled script op {fx.Op.ToString()}");
+                        case OpCode.OP_EQUAL:
+                            {
+                                var a = stack.Pop();
+                                var b = stack.Pop();
+
+                                stack.Push(a.Equals(b));
+                                break;
+                            }
+                        case OpCode.OP_EQUALVERIFY:
+                            {
+                                var a = stack.Pop();
+                                var b = stack.Pop();
+
+                                if(a == b)
+                                {
+                                    return 0;
+                                }
+                                break;
+                            }
+
+                        //fast maths
+                        case OpCode.OP_2MUL:
+                        case OpCode.OP_2DIV:
+                        case OpCode.OP_MUL:
+                        case OpCode.OP_DIV:
+                        case OpCode.OP_MOD:
+                        case OpCode.OP_LSHIFT:
+                        case OpCode.OP_RSHIFT: throw new Exception($"Disabled script op {fx.Op.ToString()}");
+                        case OpCode.OP_1ADD: stack.Push(stack.Pop() + 1); break;
+                        case OpCode.OP_1SUB: stack.Push(stack.Pop() - 1); break;
+                        case OpCode.OP_NEGATE: stack.Push(-stack.Pop()); break;
+                        case OpCode.OP_ABS: stack.Push(Math.Abs(stack.Pop())); break;
+                        case OpCode.OP_NOT: stack.Push(stack.Pop() == 0); break;
+                        case OpCode.OP_0NOTEQUAL: stack.Push(stack.Pop() == 0 ? 0 : 1); break;
+                        case OpCode.OP_ADD:
+                            {
+                                var a = stack.Pop();
+                                var b = stack.Pop();
+                                stack.Push(a + b);
+                                break;
+                            }
+                        case OpCode.OP_SUB:
+                            {
+                                var b = stack.Pop();
+                                var a = stack.Pop();
+                                stack.Push(a - b);
+                                break;
+                            }
+                        case OpCode.OP_BOOLAND:
+                            {
+                                var a = stack.Pop();
+                                var b = stack.Pop();
+                                stack.Push(a.Length != 0 && b.Length != 0);
+                                break;
+                            }
+                        case OpCode.OP_BOOLOR:
+                            {
+                                var a = stack.Pop();
+                                var b = stack.Pop();
+                                stack.Push(a.Length != 0 || b.Length != 0);
+                                break;
+                            }
+                        case OpCode.OP_NUMEQUAL:
+                            {
+                                var a = stack.Pop();
+                                var b = stack.Pop();
+
+                                stack.Push(a.IsNumber && b.IsNumber && a.Equals(b));
+                                break;
+                            }
+                        case OpCode.OP_NUMEQUALVERIFY:
+                            {
+                                var a = stack.Pop();
+                                var b = stack.Pop();
+
+                                if (!a.IsNumber && b.IsNumber && a.Equals(b))
+                                {
+                                    return 0;
+                                }
+                                break;
+                            }
+                        case OpCode.OP_NUMNOTEQUAL:
+                            {
+                                var a = stack.Pop();
+                                var b = stack.Pop();
+
+                                stack.Push(a != b);
+                                break;
+                            }
+                        case OpCode.OP_LESSTHAN:
+                            {
+                                var b = stack.Pop();
+                                var a = stack.Pop();
+
+                                stack.Push(a < b);
+                                break;
+                            }
+                        case OpCode.OP_GREATERTHAN:
+                            {
+                                var b = stack.Pop();
+                                var a = stack.Pop();
+
+                                stack.Push(a > b);
+                                break;
+                            }
+                        case OpCode.OP_LESSTHANOREQUAL:
+                            {
+                                var b = stack.Pop();
+                                var a = stack.Pop();
+
+                                stack.Push(a <= b);
+                                break;
+                            }
+                        case OpCode.OP_GREATERTHANOREQUAL:
+                            {
+                                var b = stack.Pop();
+                                var a = stack.Pop();
+
+                                stack.Push(a >= b);
+                                break;
+                            }
+                        case OpCode.OP_MIN:
+                            {
+                                var a = stack.Pop();
+                                var b = stack.Pop();
+
+                                stack.Push(Math.Min(a, b));
+                                break;
+                            }
+                        case OpCode.OP_MAX:
+                            {
+                                var a = stack.Pop();
+                                var b = stack.Pop();
+
+                                stack.Push(Math.Max(a, b));
+                                break;
+                            }
+                        case OpCode.OP_WITHIN:
+                            {
+                                var a = stack.Pop();
+                                var min = stack.Pop();
+                                var max = stack.Pop();
+
+                                stack.Push(a >= min && a < max);
+                                break;
+                            }
+
+                        //crypto
+                        case OpCode.OP_CODESEPARATOR: break;
+                        case OpCode.OP_RIPEMD160:
+                            {
+                                var data = stack.Pop();
+                                using(var cx = new RIPEMD160Managed())
+                                {
+                                    var hash = cx.ComputeHash(data);
+                                    stack.Push(hash);
+                                }
+                                break;
+                            }
+                        case OpCode.OP_SHA1:
+                            {
+                                var data = stack.Pop();
+                                using(var cx = new SHA1Managed())
+                                {
+                                    var hash = cx.ComputeHash(data);
+                                    stack.Push(hash);
+                                }
+                                break;
+                            }
+                        case OpCode.OP_SHA256:
+                            {
+                                var data = stack.Pop();
+                                using (var cx = new SHA256Managed())
+                                {
+                                    var hash = cx.ComputeHash(data);
+                                    stack.Push(hash);
+                                }
+                                break;
+                            }
+                        case OpCode.OP_HASH160:
+                            {
+                                var data = stack.Pop();
+                                using (var cx = new SHA256Managed())
+                                {
+                                    var hash = cx.ComputeHash(data);
+                                    using (var cx2 = new RIPEMD160Managed())
+                                    {
+                                        var hash2 = cx.ComputeHash(hash);
+                                        stack.Push(hash2);
+                                    }
+                                }
+                                break;
+                            }
+                        case OpCode.OP_HASH256:
+                            {
+                                var data = stack.Pop();
+                                using (var cx = new SHA256Managed())
+                                {
+                                    var hash = cx.ComputeHash(data);
+                                    cx.Clear();
+                                    hash = cx.ComputeHash(hash);
+                                    stack.Push(hash);
+                                }
+                                break;
+                            }
+                        case OpCode.OP_CHECKSIG:
+                            {
+                                var pubkey = stack.Pop();
+                                var sig = stack.Pop();
+
+                                //hmm needs external lib... secp256k1 not implemented in .NET core
+                                throw new NotImplementedException();
+                                break;
+                            }
+                        case OpCode.OP_CHECKSIGVERIFY:
+                            {
+                                var pubkey = stack.Pop();
+                                var sig = stack.Pop();
+
+                                //hmm needs external lib... secp256k1 not implemented in .NET core
+                                throw new NotImplementedException();
+                                break;
+                            }
+                        case OpCode.OP_CHECKMULTISIGVERIFY:
+                        case OpCode.OP_CHECKMULTISIG:
+                            {
+                                var nsig = stack.Pop();
+                                var pubkeys = new CScriptFrame[nsig];
+                                var sigs = new CScriptFrame[nsig];
+
+                                //load keys
+                                for(var z = nsig; z > 0; z--)
+                                {
+                                    pubkeys[z] = stack.Pop();
+                                }
+                                //load sigs
+                                for (var z = nsig; z > 0; z--)
+                                {
+                                    sigs[z] = stack.Pop();
+                                }
+
+                                //how many sigs to verify
+                                var nverify = stack.Pop();
+
+                                //cry because no secp256k1 implementation
+                                stack.Push(1);
+
+                                if(fx.Op == OpCode.OP_CHECKMULTISIGVERIFY)
+                                {
+                                    if (stack.Pop())
+                                    {
+                                        return 1;
+                                    }
+                                }
+
+                                throw new NotImplementedException();
+                                break;
+                            }
                     }
                 }
             }
 
-            return true;
+            return stack.Pop();
         }
 
-        public CScriptFrame[] ParseScript()
+        public static CScriptFrame[] ParseScript(byte[] data)
         {
             var ret = new List<CScriptFrame>();
 
-            if (Script.Length > 0)
+            if (data.Length > 0)
             {
-                for (var x = 0; x < Script.Length; x++)
+                for (var x = 0; x < data.Length; x++)
                 {
-                    var op = (OpCode)Script[x];
+                    var op = (OpCode)data[x];
 
-                    //if the first byte of the script is not an opcode, its the length of some data
-                    //swap the op code for OP_0 and set x = -1 so we can read it like normal
-                    //also dont put this to our stack as its not really in the script
-                    if (x == 0 && !Enum.IsDefined(typeof(OpCode), (int)Script[x]))
+                    //if byte is not an op code its the length of some data
+                    //i wish people just used a pushdata opcode :(
+                    //we fake an OP_0 here so we can read it as if it was a push
+                    if (data[x] >= 1 && data[x] <= 75)
                     {
                         op = OpCode.OP_0;
-                        x = -1;
+                        x -= 1;
                     }
                     else
                     {
@@ -247,22 +602,17 @@ namespace hashstream.bitcoin_lib.Script
                         case OpCode.OP_PUSHDATA1:
                         case OpCode.OP_PUSHDATA2:
                         case OpCode.OP_PUSHDATA4:
-                        case OpCode.OP_RIPEMD160:
-                        case OpCode.OP_SHA1:
-                        case OpCode.OP_SHA256:
-                        case OpCode.OP_HASH160:
-                        case OpCode.OP_HASH256:
                             {
-                                var len = Script[x + 1];
+                                var len = data[x + 1];
                                 var datastart = x + 2;
-                                if (datastart + len > Script.Length)
+                                if (datastart + len > data.Length)
                                 {
                                     throw new Exception($"Invalid script, out of bounds for {op.ToString()}({len})");
                                 }
-                                var data = new byte[len];
-                                Array.Copy(Script, datastart, data, 0, data.Length);
+                                var hdata = new byte[len];
+                                Array.Copy(data, datastart, hdata, 0, hdata.Length);
 
-                                ret.Add(new CScriptFrame(data));
+                                ret.Add(new CScriptFrame(hdata));
                                 x += len + 1;
                                 break;
                             }

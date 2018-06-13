@@ -1,4 +1,5 @@
 ﻿using hashstream.bitcoin_lib.P2P;
+using hashstream.bitcoin_lib.Script;
 using System;
 
 namespace hashstream.bitcoin_lib.BlockChain
@@ -6,21 +7,16 @@ namespace hashstream.bitcoin_lib.BlockChain
     public class TxOut : IStreamable
     {
         public UInt64 Value { get; set; }
-        public VarInt ScriptLength { get; set; }
-        public byte[] Script { get; set; }
+        public CScript RedeemScript { get; set; }
 
-        public int Size { get; private set; }
+        public int Size => 8 + RedeemScript.Size;
 
         public void ReadFromPayload(byte[] data, int offset)
         {
             Value = BitConverter.ToUInt64(data, offset);
-            ScriptLength = new VarInt(0);
-            ScriptLength.ReadFromPayload(data, offset + 8);
 
-            Script = new byte[ScriptLength];
-            Array.Copy(data, offset + 8 + ScriptLength.Size, Script, 0, Script.Length);
-
-            Size = 8 + ScriptLength + ScriptLength.Size;
+            RedeemScript = new CScript();
+            RedeemScript.ReadFromPayload(data, offset + 8);
         }
 
         public byte[] ToArray()
@@ -30,10 +26,8 @@ namespace hashstream.bitcoin_lib.BlockChain
             var v = BitConverter.GetBytes(Value);
             Array.Copy(v, 0, ret, 0, v.Length);
 
-            var sl = ScriptLength.ToArray();
-            Array.Copy(sl, 0, ret, 8, sl.Length);
-
-            Array.Copy(Script, 0, ret, 8 + sl.Length, Script.Length);
+            var sc = RedeemScript.ToArray();
+            Array.Copy(sc, 0, ret, 8, sc.Length);
 
             return ret;
         }
