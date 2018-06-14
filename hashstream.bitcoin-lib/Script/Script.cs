@@ -9,11 +9,13 @@ namespace hashstream.bitcoin_lib.Script
 {
     public class Script : IStreamable
     {
-        static uint MAX_SCRIPT_ELEMENT_SIZE => 520;
-        static int MAX_OPS_PER_SCRIPT => 201;
-        static int MAX_PUBKEYS_PER_MULTISIG => 20;
-        static int MAX_SCRIPT_SIZE => 10000;
-        static int MAX_STACK_SIZE => 1000;
+        public static uint MAX_SCRIPT_ELEMENT_SIZE => 520;
+        public static int MAX_OPS_PER_SCRIPT => 201;
+        public static int MAX_PUBKEYS_PER_MULTISIG => 20;
+        public static int MAX_SCRIPT_SIZE => 10000;
+        public static int MAX_STACK_SIZE => 1000;
+        public static int WITNESS_V0_SCRIPTHASH_SIZE => 32;
+        public static int WITNESS_V0_KEYHASH_SIZE => 20;
 
         public VarInt Length { get; internal set; }
         public byte[] ScriptBytes { get; internal set; }
@@ -315,7 +317,7 @@ namespace hashstream.bitcoin_lib.Script
                                 var a = stack.Pop();
                                 var b = stack.Pop();
 
-                                if(a == b)
+                                if (a == b)
                                 {
                                     return 0;
                                 }
@@ -454,7 +456,7 @@ namespace hashstream.bitcoin_lib.Script
                         case OpCode.OP_RIPEMD160:
                             {
                                 var data = stack.Pop();
-                                using(var cx = new RIPEMD160Managed())
+                                using (var cx = new RIPEMD160Managed())
                                 {
                                     var hash = cx.ComputeHash(data);
                                     stack.Push(hash);
@@ -464,7 +466,7 @@ namespace hashstream.bitcoin_lib.Script
                         case OpCode.OP_SHA1:
                             {
                                 var data = stack.Pop();
-                                using(var cx = new SHA1Managed())
+                                using (var cx = new SHA1Managed())
                                 {
                                     var hash = cx.ComputeHash(data);
                                     stack.Push(hash);
@@ -535,7 +537,7 @@ namespace hashstream.bitcoin_lib.Script
                                 var sigs = new ScriptFrame[nsig];
 
                                 //load keys
-                                for(var z = nsig; z > 0; z--)
+                                for (var z = nsig; z > 0; z--)
                                 {
                                     pubkeys[z] = stack.Pop();
                                 }
@@ -551,7 +553,7 @@ namespace hashstream.bitcoin_lib.Script
                                 //cry because no secp256k1 implementation
                                 stack.Push(1);
 
-                                if(fx.Op == OpCode.OP_CHECKMULTISIGVERIFY)
+                                if (fx.Op == OpCode.OP_CHECKMULTISIGVERIFY)
                                 {
                                     if (stack.Pop())
                                     {
@@ -575,43 +577,48 @@ namespace hashstream.bitcoin_lib.Script
 
             if (data.Length > 0)
             {
-                for (var x = 0; x < data.Length; x++)
+                for (uint x = 0; x < data.Length; x++)
                 {
                     var op = (OpCode)data[x];
 
-                    //if byte is not an op code its the length of some data
-                    //i wish people just used a pushdata opcode :(
-                    //we fake an OP_0 here so we can read it as if it was a push
-                    if (data[x] >= 1 && data[x] <= 75)
+                    if (op <= OpCode.OP_PUSHDATA4)
                     {
-                        op = OpCode.OP_0;
-                        x -= 1;
+                        uint nSize = 0;
+                        uint start = 0;
+                        if (op < OpCode.OP_PUSHDATA1)
+                        {
+                            nSize = (uint)op;
+                            start = x + 1;
+                        }
+                        else if (op == OpCode.OP_PUSHDATA1)
+                        {
+                            nSize = data[x + 1];
+                            start = x + 2;
+                        }
+                        else if (op == OpCode.OP_PUSHDATA2)
+                        {
+                            nSize = BitConverter.ToUInt16(data, (int)x + 1);
+                            start = x + 3;
+                        }
+                        else if (op == OpCode.OP_PUSHDATA4)
+                        {
+                            nSize = BitConverter.ToUInt32(data, (int)x + 1);
+                            start = x + 5;
+                        }
+                        
+                        if (start + nSize > data.Length)
+                        {
+                            throw new Exception($"Invalid script, out of bounds for {op.ToString()}({nSize})");
+                        }
+                        var hdata = new byte[nSize];
+                        Array.Copy(data, start, hdata, 0, hdata.Length);
+
+                        ret.Add(new ScriptFrame(hdata));
+                        x += nSize + 1;
                     }
                     else
                     {
                         ret.Add(new ScriptFrame(op));
-                    }
-
-                    switch (op)
-                    {
-                        case OpCode.OP_0:
-                        case OpCode.OP_PUSHDATA1:
-                        case OpCode.OP_PUSHDATA2:
-                        case OpCode.OP_PUSHDATA4:
-                            {
-                                var len = data[x + 1];
-                                var datastart = x + 2;
-                                if (datastart + len > data.Length)
-                                {
-                                    throw new Exception($"Invalid script, out of bounds for {op.ToString()}({len})");
-                                }
-                                var hdata = new byte[len];
-                                Array.Copy(data, datastart, hdata, 0, hdata.Length);
-
-                                ret.Add(new ScriptFrame(hdata));
-                                x += len + 1;
-                                break;
-                            }
                     }
                 }
             }
@@ -621,7 +628,7 @@ namespace hashstream.bitcoin_lib.Script
 
         public override string ToString()
         {
-            if(ParsedScript != null && ParsedScript.Length > 0)
+            if (ParsedScript != null && ParsedScript.Length > 0)
             {
                 return string.Join<ScriptFrame>(" ", ParsedScript);
             }

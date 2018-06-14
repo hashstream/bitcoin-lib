@@ -1,8 +1,6 @@
 ﻿using hashstream.bitcoin_lib.P2P;
 using hashstream.bitcoin_lib.Script;
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace hashstream.bitcoin_lib.BlockChain
 {
@@ -40,6 +38,22 @@ namespace hashstream.bitcoin_lib.BlockChain
             Array.Copy(sq, 0, ret, p.Length + sc.Length, sq.Length);
 
             return ret;
+        }
+
+        public bool Verify(TxOut prev)
+        {
+            //if this is not the correct outpoint validation will fail anyway
+            var redeemScript = prev.RedeemScript;
+            var scriptSig = Script;
+
+            if (scriptSig.IsPayToWitnessScriptHash())
+            {
+
+            }
+            else if (scriptSig.IsWitnessProgram(out int version, out byte[] program))
+            {
+
+            }
         }
     }
 }
