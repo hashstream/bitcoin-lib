@@ -1,52 +1,148 @@
-﻿using System;
-using System.Collections.Generic;
+﻿#region License
+// 
+//     MIT License
+//
+//     CoiniumServ - Crypto Currency Mining Pool Server Software
+//     Copyright (C) 2013 - 2017, CoiniumServ Project
+//     Hüseyin Uslu, shalafiraistlin at gmail dot com
+//     https://github.com/bonesoul/CoiniumServ
+// 
+//     HashstreamLib
+//     Modifications by v0l - 2018
+//
+//     Permission is hereby granted, free of charge, to any person obtaining a copy
+//     of this software and associated documentation files (the "Software"), to deal
+//     in the Software without restriction, including without limitation the rights
+//     to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+//     copies of the Software, and to permit persons to whom the Software is
+//     furnished to do so, subject to the following conditions:
+//     
+//     The above copyright notice and this permission notice shall be included in all
+//     copies or substantial portions of the Software.
+//     
+//     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//     IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+//     FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+//     AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+//     LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+//     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//     SOFTWARE.
+// 
+#endregion
+
+using System;
+using System.Linq;
 using System.Numerics;
 using System.Text;
 
 namespace hashstream.bitcoin_lib.Encoding
 {
+
+    /// <summary>
+    /// Base58 encoder & decoder
+    /// </summary>
+    /// <specification>https://en.bitcoin.it/wiki/Base58Check_encoding</specification>
+    /// <remarks>
+    /// A custom form of base58 is used to encode BitCoin addresses. Note that this is not the same 
+    /// base58 as used by Flickr, which you may see reference to around the internet.
+    /// Satoshi says: why base-58 instead of standard base-64 encoding?
+    /// * Don't want 0OIl characters that look the same in some fonts and could be used to create visually identical looking account numbers.
+    /// * A string with non-alphanumeric characters is not as easily accepted as an account number.
+    /// * E-mail usually won't line-break if there's no punctuation to break at.
+    /// * Doubleclicking selects the whole number as one word if it's all alphanumeric.
+    /// Original implementation: https://github.com/CoiniumServ/BitcoinSharp/blob/55ca27107d200ede9896c1064de76b04d4daf9ef/src/Core/Base58.cs
+    /// </remarks>
     public class Base58
     {
-        private static string EncodingTable => "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-        private static int[] DecodingTable => new int[] {
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, -1, -1, -1, -1, -1, -1,
-            -1, 9, 10, 11, 12, 13, 14, 15, 16, -1, 17, 18, 19, 20, 21, -1,
-            22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, -1, -1, -1, -1, -1,
-            -1, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, -1, 44, 45, 46,
-            47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-        };
+        private const string Alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+        private static readonly BigInteger Base = new BigInteger(58);
 
-        public byte[] Data { get; internal set; }
-
-        //decode
-        public Base58(string data)
+        public static string Encode(byte[] input)
         {
-            
+            var bi = new BigInteger(input);
+            var s = new StringBuilder();
+            while (bi.CompareTo(Base) >= 0)
+            {
+                var mod = bi % Base;
+                s.Insert(0, new[] { Alphabet[(int)mod] });
+                bi = (bi - mod) / Base;
+            }
+
+            s.Insert(0, new[] { Alphabet[(int)bi] });
+
+            foreach (var anInput in input)
+            {
+                if (anInput == 0)
+                {
+                    s.Insert(0, new[] { Alphabet[0] });
+                }
+                else
+                {
+                    break;
+                }
+            }
+            return s.ToString();
         }
 
-        //encode
-        public Base58(byte[] data)
+        /// <exception cref="AddressFormatException"/>
+        public static byte[] Decode(string input)
         {
-            Data = data;
+            var bytes = DecodeToBigInteger(input).ToByteArray();
+            // We may have got one more byte than we wanted, if the high bit of the next-to-last byte was not zero. This
+            // is because BigIntegers are represented with twos-compliment notation, thus if the high bit of the last
+            // byte happens to be 1 another 8 zero bits will be added to ensure the number parses as positive. Detect
+            // that case here and chop it off.
+            var stripSignByte = bytes.Length > 1 && bytes[0] == 0 && bytes[1] >= 0x80;
+            // Count the leading zeros, if any.
+            var leadingZeros = 0;
+            for (var i = 0; input[i] == Alphabet[0]; i++)
+            {
+                leadingZeros++;
+            }
+            // Now cut/pad correctly. Java 6 has a convenience for this, but Android can't use it.
+            var tmp = new byte[bytes.Length - (stripSignByte ? 1 : 0) + leadingZeros];
+            Array.Copy(bytes, stripSignByte ? 1 : 0, tmp, leadingZeros, tmp.Length - leadingZeros);
+            return tmp;
         }
 
-        public override string ToString()
+        /// <exception cref="AddressFormatException"/>
+        public static BigInteger DecodeToBigInteger(string input)
         {
-            var size = Data.Length * 138 / 100 + 1;
-            var length = 0;
+            var bi = new BigInteger(0);
+            // Work backwards through the string.
+            for (var i = input.Length - 1; i >= 0; i--)
+            {
+                var alphaIndex = Alphabet.IndexOf(input[i]);
+                if (alphaIndex == -1)
+                {
+                    throw new Exception("Illegal character " + input[i] + " at " + i);
+                }
+                bi = bi + (new BigInteger(alphaIndex) * (Base ^ input.Length - 1 - i));
+            }
+            return bi;
+        }
 
-            var b58 = new char[size];
+        /// <summary>
+        /// Uses the checksum in the last 4 bytes of the decoded data to verify the rest are correct. The checksum is
+        /// removed from the returned data.
+        /// </summary>
+        /// <exception cref="AddressFormatException">If the input is not base 58 or the checksum does not validate.</exception>
+        public static byte[] DecodeChecked(string input)
+        {
+            var tmp = Decode(input);
+            if (tmp.Length < 4)
+                throw new Exception("Input too short");
+            var checksum = new byte[4];
+            Array.Copy(tmp, tmp.Length - 4, checksum, 0, 4);
+            var bytes = new byte[tmp.Length - 4];
+            Array.Copy(tmp, 0, bytes, 0, tmp.Length - 4);
+            tmp = bytes.SHA256d();
+
+            var hash = new byte[4];
+            Array.Copy(tmp, 0, hash, 0, 4);
+            if (!hash.SequenceEqual(checksum))
+                throw new Exception("Checksum does not validate");
+            return bytes;
         }
     }
 }

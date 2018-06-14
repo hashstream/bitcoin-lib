@@ -1,11 +1,10 @@
 ﻿using hashstream.bitcoin_lib.Encoding;
 using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace hashstream.bitcoin_lib.BlockChain
 {
-    public class Bech32Address
+    public class Bech32Address : Address
     {
         private Bech32 Bech32Data { get; set; }
 
@@ -27,7 +26,7 @@ namespace hashstream.bitcoin_lib.BlockChain
             //convert back to witness program
             WitnessProgram = ConvertBits(pg, 5, 8, false);
 
-            ValidateArress();
+            ValidateAddress();
         }
 
         public Bech32Address(string hrp, int version, int[] program)
@@ -38,10 +37,10 @@ namespace hashstream.bitcoin_lib.BlockChain
             var data = new int[] { WitnessVersion }.Concat(ConvertBits(WitnessProgram, 8, 5, true));
             Bech32Data = new Bech32(hrp, data);
 
-            ValidateArress();
+            ValidateAddress();
         }
 
-        private void ValidateArress()
+        private void ValidateAddress()
         {
             if (Bech32Data.Hrp != "bc" && Bech32Data.Hrp != "tb")
             {

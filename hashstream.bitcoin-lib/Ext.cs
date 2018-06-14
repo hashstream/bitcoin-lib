@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 namespace hashstream.bitcoin_lib
@@ -60,6 +61,18 @@ namespace hashstream.bitcoin_lib
             Array.Copy(a, ret, a.Length);
             Array.Copy(b, 0, ret, a.Length, b.Length);
             return ret;
+        }
+
+        public static byte[] SHA256d(this byte[] data)
+        {
+            using (var sha = new SHA256Managed())
+            {
+                var tmp = sha.ComputeHash(data);
+                sha.Clear();
+                tmp = sha.ComputeHash(tmp);
+
+                return tmp;
+            }
         }
     }
 }

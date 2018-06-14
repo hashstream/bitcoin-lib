@@ -1,7 +1,6 @@
-﻿using hashstream.bitcoin_lib.Crypto;
+﻿using hashstream.bitcoin_lib.BlockChain;
+using hashstream.bitcoin_lib.Crypto;
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace hashstream.bitcoin_lib.Script
 {
@@ -214,6 +213,18 @@ namespace hashstream.bitcoin_lib.Script
             Array.Copy(ScriptBytes, 2, program, 0, program.Length);
 
             return program;
+        }
+
+        public Address GetAddress()
+        {
+            if(TxType == TxOutType.TX_WITNESS_V0_SCRIPTHASH)
+            {
+
+            }
+            else if(TxType == TxOutType.TX_WITNESS_V0_KEYHASH)
+            {
+
+            }
         }
     }
 }
