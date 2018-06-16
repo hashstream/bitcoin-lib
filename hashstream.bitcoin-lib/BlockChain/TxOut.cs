@@ -19,6 +19,11 @@ namespace hashstream.bitcoin_lib.BlockChain
             RedeemScript.ReadFromPayload(data, offset + 8);
         }
 
+        public Address GetAddress()
+        {
+            return RedeemScript.GetAddress();
+        }
+
         public byte[] ToArray()
         {
             var ret = new byte[Size];

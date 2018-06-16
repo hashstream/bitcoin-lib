@@ -192,15 +192,10 @@ namespace hashstream.bitcoin_lib.Script
             return false;
         }
 
-        public bool IsSmallInteger(byte op)
-        {
-            return op >= (byte)OpCode.OP_1 && op <= (byte)OpCode.OP_16;
-        }
-
         public bool IsMultiSig()
         {
             //m-of-n multisig, dont check keys..
-            if(ScriptBytes.Length > 1 && IsSmallInteger(ScriptBytes[0]) && IsSmallInteger(ScriptBytes[ScriptBytes.Length-2]) && ScriptBytes[ScriptBytes.Length-1] == (byte)OpCode.OP_CHECKMULTISIG)
+            if(ScriptBytes.Length > 1 && IsSmallInteger((OpCode)ScriptBytes[0]) && IsSmallInteger((OpCode)ScriptBytes[ScriptBytes.Length-2]) && ScriptBytes[ScriptBytes.Length-1] == (byte)OpCode.OP_CHECKMULTISIG)
             {
                 return true;
             }
@@ -217,13 +212,34 @@ namespace hashstream.bitcoin_lib.Script
 
         public Address GetAddress()
         {
-            if(TxType == TxOutType.TX_WITNESS_V0_SCRIPTHASH)
-            {
+            var t = TxType;
 
+            if(t == TxOutType.TX_WITNESS_V0_SCRIPTHASH)
+            {
+                var version = GetSmallIntegerValue(ParsedScript[0]); //first opcode is witness program version
+                var script_hash = ParsedScript[1]; //second item is witness program hash
+                return new Bech32Address(AddressNetwork.Main, version, script_hash);
             }
-            else if(TxType == TxOutType.TX_WITNESS_V0_KEYHASH)
+            else if(t == TxOutType.TX_WITNESS_V0_KEYHASH)
             {
-
+                var version = GetSmallIntegerValue(ParsedScript[0]); //first opcode is witness program version
+                var key_hash = ParsedScript[1]; //second item is witness program hash
+                return new Bech32Address(AddressNetwork.Main, version, key_hash);
+            }
+            else if(t == TxOutType.TX_PUBKEYHASH)
+            {
+                var key_hash = ParsedScript[2]; //third item is pk hash
+                return new Base58Address(AddressNetwork.Main, Base58AddressType.PubKey, key_hash);
+            }
+            else if(t == TxOutType.TX_SCRIPTHASH)
+            {
+                var script_hash = ParsedScript[1]; //second item is script hash
+                return new Base58Address(AddressNetwork.Main, Base58AddressType.Script, script_hash);
+            }
+            else if(t == TxOutType.TX_PUBKEY)
+            {
+                var key = ParsedScript[0]; //first item is the key
+                return new Base58Address(AddressNetwork.Main, Base58AddressType.PubKey, ((byte[])key).Hash160());
             }
 
             return null;

@@ -571,6 +571,27 @@ namespace hashstream.bitcoin_lib.Script
             return stack.Pop();
         }
 
+        public bool IsSmallInteger(OpCode op)
+        {
+            return op == OpCode.OP_0 || (op >= OpCode.OP_1 && op <= OpCode.OP_16);
+        }
+
+        public int GetSmallIntegerValue(OpCode o)
+        {
+            if (IsSmallInteger(o))
+            {
+                if(o == OpCode.OP_0)
+                {
+                    return 0;
+                }
+                else
+                {
+                    return o - OpCode.OP_RESERVED;
+                }
+            }
+            return -1;
+        }
+
         public static ScriptFrame[] ParseScript(byte[] data)
         {
             var ret = new List<ScriptFrame>();

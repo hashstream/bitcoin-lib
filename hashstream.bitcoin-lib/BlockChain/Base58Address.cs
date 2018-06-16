@@ -26,6 +26,11 @@ namespace hashstream.bitcoin_lib.BlockChain
         public Base58Address(string addr) : base(AddressNetwork.Unknown)
         {
             var db = Base58.Decode(addr);
+            if (!Base58.ValidateChecksum(db))
+            {
+                throw new Exception("Checksum failed");
+            }
+
             AddressBytes = db;
 
             var t = GetNetworkAndType();

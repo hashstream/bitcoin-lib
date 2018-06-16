@@ -24,5 +24,6 @@ namespace hashstream.bitcoin_lib.BlockChain
         }
 
         public abstract byte[] ToArray();
+        public new abstract string ToString();
     }
 }

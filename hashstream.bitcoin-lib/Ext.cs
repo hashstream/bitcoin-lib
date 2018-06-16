@@ -1,4 +1,5 @@
-﻿using System;
+﻿using hashstream.bitcoin_lib.Crypto;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
@@ -6,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace hashstream.bitcoin_lib
 {
-    public static class StreamExtensions
+    public static class Extensions
     {
         private static Dictionary<string, byte> HexTable { get; set; } = BuildHexTable();
 
@@ -78,6 +79,27 @@ namespace hashstream.bitcoin_lib
             }
 
             return hash;
+        }
+
+        public static byte[] SHA256(this byte[] data)
+        {
+            using (var sha = new SHA256Managed())
+            {
+                return sha.ComputeHash(data);
+            }
+        }
+
+        public static byte[] RIPEMD160(this byte[] data)
+        {
+            using(var rmd = new RIPEMD160Managed())
+            {
+                return rmd.ComputeHash(data);
+            }
+        }
+
+        public static byte[] Hash160(this byte[] data)
+        {
+            return data.SHA256().RIPEMD160();
         }
     }
 }

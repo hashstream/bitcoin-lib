@@ -1,57 +1,10 @@
-﻿#region License
-// 
-//     MIT License
-//
-//     CoiniumServ - Crypto Currency Mining Pool Server Software
-//     Copyright (C) 2013 - 2017, CoiniumServ Project
-//     Hüseyin Uslu, shalafiraistlin at gmail dot com
-//     https://github.com/bonesoul/CoiniumServ
-// 
-//     HashstreamLib
-//     Modifications by v0l - 2018
-//
-//     Permission is hereby granted, free of charge, to any person obtaining a copy
-//     of this software and associated documentation files (the "Software"), to deal
-//     in the Software without restriction, including without limitation the rights
-//     to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-//     copies of the Software, and to permit persons to whom the Software is
-//     furnished to do so, subject to the following conditions:
-//     
-//     The above copyright notice and this permission notice shall be included in all
-//     copies or substantial portions of the Software.
-//     
-//     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-//     IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-//     FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-//     AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//     LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-//     SOFTWARE.
-// 
-#endregion
-
-using System;
+﻿using System;
 using System.Linq;
 using System.Numerics;
 using System.Text;
 
 namespace hashstream.bitcoin_lib.Encoding
 {
-
-    /// <summary>
-    /// Base58 encoder & decoder
-    /// </summary>
-    /// <specification>https://en.bitcoin.it/wiki/Base58Check_encoding</specification>
-    /// <remarks>
-    /// A custom form of base58 is used to encode BitCoin addresses. Note that this is not the same 
-    /// base58 as used by Flickr, which you may see reference to around the internet.
-    /// Satoshi says: why base-58 instead of standard base-64 encoding?
-    /// * Don't want 0OIl characters that look the same in some fonts and could be used to create visually identical looking account numbers.
-    /// * A string with non-alphanumeric characters is not as easily accepted as an account number.
-    /// * E-mail usually won't line-break if there's no punctuation to break at.
-    /// * Doubleclicking selects the whole number as one word if it's all alphanumeric.
-    /// Original implementation: https://github.com/CoiniumServ/BitcoinSharp/blob/55ca27107d200ede9896c1064de76b04d4daf9ef/src/Core/Base58.cs
-    /// </remarks>
     public class Base58
     {
         private const string Alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
@@ -65,7 +18,7 @@ namespace hashstream.bitcoin_lib.Encoding
             var bi = new BigInteger(input);
 
             var s = new StringBuilder();
-            while (bi > 58)
+            while (bi > 0)
             {
                 var mod = bi % 58;
                 s.Insert(0, new[] { Alphabet[(int)mod] });
@@ -89,7 +42,6 @@ namespace hashstream.bitcoin_lib.Encoding
             return s.ToString();
         }
 
-        /// <exception cref="AddressFormatException"/>
         public static byte[] Decode(string input)
         {
             var bytes = DecodeToBigInteger(input).ToByteArray();
@@ -113,8 +65,7 @@ namespace hashstream.bitcoin_lib.Encoding
             Array.Copy(bytes, stripSignByte ? 1 : 0, tmp, leadingZeros, tmp.Length - leadingZeros);
             return tmp;
         }
-
-        /// <exception cref="AddressFormatException"/>
+        
         public static BigInteger DecodeToBigInteger(string input)
         {
             var bi = new BigInteger(0);
@@ -131,27 +82,20 @@ namespace hashstream.bitcoin_lib.Encoding
             return bi;
         }
 
-        /// <summary>
-        /// Uses the checksum in the last 4 bytes of the decoded data to verify the rest are correct. The checksum is
-        /// removed from the returned data.
-        /// </summary>
-        /// <exception cref="AddressFormatException">If the input is not base 58 or the checksum does not validate.</exception>
-        public static byte[] DecodeChecked(string input)
+        public static bool ValidateChecksum(byte[] data)
         {
-            var tmp = Decode(input);
-            if (tmp.Length < 4)
-                throw new Exception("Input too short");
-            var checksum = new byte[4];
-            Array.Copy(tmp, tmp.Length - 4, checksum, 0, 4);
-            var bytes = new byte[tmp.Length - 4];
-            Array.Copy(tmp, 0, bytes, 0, tmp.Length - 4);
-            tmp = bytes.SHA256d();
+            var db = new byte[data.Length - 4];
+            var chk = new byte[4];
 
-            var hash = new byte[4];
-            Array.Copy(tmp, 0, hash, 0, 4);
-            if (!hash.SequenceEqual(checksum))
-                throw new Exception("Checksum does not validate");
-            return bytes;
+            Array.Copy(data, 0, db, 0, db.Length);
+            Array.Copy(data, data.Length - 4, chk, 0, chk.Length);
+
+            var n_chk = db.SHA256d();
+
+            return chk[0] == n_chk[0] 
+                && chk[1] == n_chk[1] 
+                && chk[2] == n_chk[2]
+                && chk[3] == n_chk[3];
         }
     }
 }
