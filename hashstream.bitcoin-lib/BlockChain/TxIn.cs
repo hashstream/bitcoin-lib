@@ -50,10 +50,12 @@ namespace hashstream.bitcoin_lib.BlockChain
             {
 
             }
-            else if (scriptSig.IsWitnessProgram(out int version, out byte[] program))
+            else if (scriptSig.IsWitnessProgram(out int version))
             {
 
             }
+
+            return false;
         }
     }
 }

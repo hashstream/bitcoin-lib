@@ -4,8 +4,25 @@ using System.Text;
 
 namespace hashstream.bitcoin_lib.BlockChain
 {
-    public class Address
+    public enum AddressNetwork
     {
+        Unknown,
+        Main,
+        Test,
+        RegTest
+    }
 
+    public abstract class Address
+    {
+        public AddressNetwork Network { get; internal set; }
+
+        public byte[] AddressBytes { get; internal set; }
+
+        public Address(AddressNetwork net)
+        {
+            Network = net;
+        }
+
+        public abstract byte[] ToArray();
     }
 }

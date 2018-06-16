@@ -55,24 +55,29 @@ namespace hashstream.bitcoin_lib.Encoding
     public class Base58
     {
         private const string Alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-        private static readonly BigInteger Base = new BigInteger(58);
 
         public static string Encode(byte[] input)
         {
-            var bi = new BigInteger(input);
-            var s = new StringBuilder();
-            while (bi.CompareTo(Base) >= 0)
+            if (BitConverter.IsLittleEndian)
             {
-                var mod = bi % Base;
+                Array.Reverse(input);
+            }
+            var bi = new BigInteger(input);
+
+            var s = new StringBuilder();
+            while (bi > 58)
+            {
+                var mod = bi % 58;
                 s.Insert(0, new[] { Alphabet[(int)mod] });
-                bi = (bi - mod) / Base;
+                bi /= 58;
             }
 
             s.Insert(0, new[] { Alphabet[(int)bi] });
 
-            foreach (var anInput in input)
+            for(var x = input.Length - 1; x > 0 ; x--)
             {
-                if (anInput == 0)
+                var z = input[x];
+                if (z == 0)
                 {
                     s.Insert(0, new[] { Alphabet[0] });
                 }
@@ -88,6 +93,10 @@ namespace hashstream.bitcoin_lib.Encoding
         public static byte[] Decode(string input)
         {
             var bytes = DecodeToBigInteger(input).ToByteArray();
+            if (BitConverter.IsLittleEndian)
+            {
+                Array.Reverse(bytes);
+            }
             // We may have got one more byte than we wanted, if the high bit of the next-to-last byte was not zero. This
             // is because BigIntegers are represented with twos-compliment notation, thus if the high bit of the last
             // byte happens to be 1 another 8 zero bits will be added to ensure the number parses as positive. Detect
@@ -117,7 +126,7 @@ namespace hashstream.bitcoin_lib.Encoding
                 {
                     throw new Exception("Illegal character " + input[i] + " at " + i);
                 }
-                bi = bi + (new BigInteger(alphaIndex) * (Base ^ input.Length - 1 - i));
+                bi = BigInteger.Add(bi, BigInteger.Multiply(new BigInteger(alphaIndex), BigInteger.Pow(new BigInteger(58), input.Length - 1 - i)));
             }
             return bi;
         }

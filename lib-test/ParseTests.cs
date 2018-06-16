@@ -98,14 +98,14 @@ namespace lib_test
             var test_p2wsh = "tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sl5k7";
 
             //check for exceptions
-            new Bech32(main_p2wpkh);
-            new Bech32(test_p2wpkh);
-            new Bech32(main_p2wsh);
-            new Bech32(test_p2wsh);
+            Bech32.Decode(main_p2wpkh);
+            Bech32.Decode(test_p2wpkh);
+            Bech32.Decode(main_p2wsh);
+            Bech32.Decode(test_p2wsh);
 
             //verify checksum fails                  ↓ this 'a' is supposed to be 'r'
             var check_fail = "bc1qw508d6qejxtdg4y5r3aarvary0c5xw7kv8f3t4";
-            Assert.ThrowsAny<Exception>(() => new Bech32(check_fail));
+            Assert.ThrowsAny<Exception>(() => Bech32.Decode(check_fail));
         }
 
         [Fact]
@@ -120,9 +120,39 @@ namespace lib_test
         public void Bech32Address_Encode()
         {
             var bc1 = new Bech32Address("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4");
-            var bc2 = new Bech32Address(bc1.Hrp, bc1.WitnessVersion, bc1.WitnessProgram);
+            var bc2 = new Bech32Address(bc1.Network, bc1.WitnessVersion, bc1.WitnessProgram);
 
             Assert.Equal("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4", bc2.ToString());
+        }
+
+        [Fact]
+        public void Base58Address_Encode()
+        {
+            var tests = new Tuple<string, Base58Address>[]
+            {
+                Tuple.Create("17H3TJkbCgQSmmMpgAWjG559t3jkgV6Em6", new Base58Address(AddressNetwork.Main, Base58AddressType.PubKey, "44d9754d836e2021d814c9fe6e97770ab3f614cd".FromHex())),
+                Tuple.Create("3FTWMqSqjXz8xp1hswKLBvqaFksHUGjUZE", new Base58Address(AddressNetwork.Main, Base58AddressType.Script, "9703acbc41aca13c5cd69a62dee56fb2590a38af".FromHex()))
+            };
+
+            foreach(var t in tests)
+            {
+                Assert.Equal(t.Item1, t.Item2.ToString());
+            }
+        }
+
+        [Fact]
+        public void Base58Address_Decode()
+        {
+            var tests = new Tuple<Base58Address, string>[]
+            {
+                Tuple.Create(new Base58Address("17H3TJkbCgQSmmMpgAWjG559t3jkgV6Em6"), "44d9754d836e2021d814c9fe6e97770ab3f614cd"),
+                Tuple.Create(new Base58Address("3FTWMqSqjXz8xp1hswKLBvqaFksHUGjUZE"), "9703acbc41aca13c5cd69a62dee56fb2590a38af")
+            };
+
+            foreach (var t in tests)
+            {
+                Assert.Equal(t.Item1.ToArray().ToHex(), t.Item2);
+            }
         }
 
         [Fact]

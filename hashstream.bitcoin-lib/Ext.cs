@@ -39,6 +39,11 @@ namespace hashstream.bitcoin_lib
             return ret;
         }
 
+        public static string ToHex(this byte[] data)
+        {
+            return BitConverter.ToString(data).Replace("-", "").ToLower();
+        }
+
         public static async Task ReadAsyncExact(this Stream s, byte[] buf, int offset, int count)
         {
             var i_offset = 0;
@@ -65,14 +70,14 @@ namespace hashstream.bitcoin_lib
 
         public static byte[] SHA256d(this byte[] data)
         {
+            byte[] hash = null;
             using (var sha = new SHA256Managed())
             {
-                var tmp = sha.ComputeHash(data);
-                sha.Clear();
-                tmp = sha.ComputeHash(tmp);
-
-                return tmp;
+                hash = sha.ComputeHash(data);
+                hash = sha.ComputeHash(hash);
             }
+
+            return hash;
         }
     }
 }

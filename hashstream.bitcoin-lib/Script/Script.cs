@@ -581,7 +581,7 @@ namespace hashstream.bitcoin_lib.Script
                 {
                     var op = (OpCode)data[x];
 
-                    if (op <= OpCode.OP_PUSHDATA4)
+                    if (op > OpCode.OP_0 && op <= OpCode.OP_PUSHDATA4)
                     {
                         uint nSize = 0;
                         uint start = 0;
@@ -590,31 +590,36 @@ namespace hashstream.bitcoin_lib.Script
                             nSize = (uint)op;
                             start = x + 1;
                         }
-                        else if (op == OpCode.OP_PUSHDATA1)
+                        else
                         {
-                            nSize = data[x + 1];
-                            start = x + 2;
-                        }
-                        else if (op == OpCode.OP_PUSHDATA2)
-                        {
-                            nSize = BitConverter.ToUInt16(data, (int)x + 1);
-                            start = x + 3;
-                        }
-                        else if (op == OpCode.OP_PUSHDATA4)
-                        {
-                            nSize = BitConverter.ToUInt32(data, (int)x + 1);
-                            start = x + 5;
+                            ret.Add(new ScriptFrame(op));
+                            if (op == OpCode.OP_PUSHDATA1)
+                            {
+                                nSize = data[x + 1];
+                                start = x + 2;
+                            }
+                            else if (op == OpCode.OP_PUSHDATA2)
+                            {
+                                nSize = BitConverter.ToUInt16(data, (int)x + 1);
+                                start = x + 3;
+                            }
+                            else if (op == OpCode.OP_PUSHDATA4)
+                            {
+                                nSize = BitConverter.ToUInt32(data, (int)x + 1);
+                                start = x + 5;
+                            }
                         }
                         
                         if (start + nSize > data.Length)
                         {
-                            throw new Exception($"Invalid script, out of bounds for {op.ToString()}({nSize})");
+                            ret.Add(new ScriptFrame(-1));
+                            break;
                         }
                         var hdata = new byte[nSize];
                         Array.Copy(data, start, hdata, 0, hdata.Length);
 
                         ret.Add(new ScriptFrame(hdata));
-                        x += nSize + 1;
+                        x = start + nSize - 1;
                     }
                     else
                     {

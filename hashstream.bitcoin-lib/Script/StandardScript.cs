@@ -225,6 +225,8 @@ namespace hashstream.bitcoin_lib.Script
             {
 
             }
+
+            return null;
         }
     }
 }
