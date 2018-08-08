@@ -16,7 +16,7 @@ namespace hashstream.bitcoin_node_test
             
             node.Start();
 
-            node.AddPeer(new IPEndPoint(IPAddress.Parse("94.23.59.197"), 8333));
+            node.AddPeer(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 12375));
             
             Console.ReadKey();
         }

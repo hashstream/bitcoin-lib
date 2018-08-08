@@ -18,7 +18,7 @@ namespace hashstream.bitcoin_lib.BlockChain
 
         public string Hrp { get; internal set; }
 
-        public Bech32Address(string addr) : base(0)
+        public Bech32Address(string addr)
         {
             var data = Bech32.Decode(addr);
             WitnessVersion = data.Item2[0];
@@ -35,8 +35,9 @@ namespace hashstream.bitcoin_lib.BlockChain
             ValidateAddress();
         }
 
-        public Bech32Address(AddressNetwork net, int version, byte[] program) : base(net)
+        public Bech32Address(AddressNetwork net, int version, byte[] program)
         {
+            Network = net;
             WitnessVersion = version;
             WitnessProgram = program;
 

@@ -30,6 +30,10 @@ namespace hashstream.bitcoin_lib.BlockChain
             }
 
             HashBytes = h;
+            if (BitConverter.IsLittleEndian)
+            {
+                HashBytes = HashBytes.Reverse().ToArray();
+            }
         }
 
         public Hash(string h)

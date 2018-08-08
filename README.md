@@ -5,6 +5,7 @@ Generally speaking, anything on Consensus or API/RPC layer is not implemented ye
 The main purpose of this lib is for parsing and serializing data for the P2P network.
 
 hashstream/libconsensus will be created in order to verify transactions / blocks.
+
 hashstream/node will be created to act as a full bitcoin node (this is partially implemted in here for testing purposes) 
 
 The below list applies to all bitcoin related libs in this org.

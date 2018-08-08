@@ -124,7 +124,11 @@ namespace hashstream.bitcoin_lib.Script
         public new void ReadFromPayload(byte[] data, int offset)
         {
             base.ReadFromPayload(data, offset);
-            ParsedScript = ParseScript(ScriptBytes);
+            //only parse standard scripts
+            if (TxType != TxOutType.TX_NONSTANDARD)
+            {
+                ParsedScript = ParseScript(ScriptBytes);
+            }
         }
 
         public bool IsPayToScriptHash()

@@ -9,12 +9,19 @@ namespace hashstream.bitcoin_lib.BlockChain
         public VarInt TxnCount { get; set; }
         public Tx[] Txns { get; set; }
 
+        public Block() { }
+
+        public Block(BlockHeader h) { Header = h; }
+
         public void ReadFromPayload(byte[] data, int offset)
         {
             var roffset = 0;
-            Header = new BlockHeader();
-            Header.ReadFromPayload(data, roffset);
-            roffset += Header.Size;
+            if (Header == null)
+            {
+                Header = new BlockHeader();
+                Header.ReadFromPayload(data, roffset);
+                roffset += Header.Size;
+            }
 
             TxnCount = new VarInt(0);
             TxnCount.ReadFromPayload(data, roffset);

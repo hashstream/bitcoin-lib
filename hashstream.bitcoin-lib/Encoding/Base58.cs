@@ -25,8 +25,6 @@ namespace hashstream.bitcoin_lib.Encoding
                 bi /= 58;
             }
 
-            s.Insert(0, new[] { Alphabet[(int)bi] });
-
             for(var x = input.Length - 1; x > 0 ; x--)
             {
                 var z = input[x];

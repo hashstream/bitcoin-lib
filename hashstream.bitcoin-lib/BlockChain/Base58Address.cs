@@ -16,15 +16,27 @@ namespace hashstream.bitcoin_lib.BlockChain
     public class Base58Address : Address
     {
         public Base58AddressType AddressType { get; internal set; }
-        
-        public Base58Address(AddressNetwork net, Base58AddressType addr_type, byte[] bytes) : base(net)
+
+        public Base58Address(byte[] bytes)
         {
+            AddressBytes = bytes;
+
+            var at = GetNetworkAndType();
+            Network = at.Item1;
+            AddressType = at.Item2;
+        }
+
+        public Base58Address(AddressNetwork net, Base58AddressType addr_type, byte[] bytes)
+        {
+            Network = net;
             AddressType = addr_type;
             AddressBytes = bytes;
         }
 
-        public Base58Address(string addr) : base(AddressNetwork.Unknown)
+        public Base58Address(string addr)
         {
+            Network = AddressNetwork.Unknown;
+
             var db = Base58.Decode(addr);
             if (!Base58.ValidateChecksum(db))
             {
