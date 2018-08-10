@@ -5,6 +5,7 @@ using hashstream.bitcoin_lib.Script;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using Xunit;
@@ -94,7 +95,7 @@ namespace lib_test
 
             Assert.True(block_parsed.Header.Version == 1);
             Assert.Equal(block, block_parsed.ToArray().ToHex());
-            Assert.Equal(block_hash, block_parsed.GetBlockHash());
+            Assert.Equal(block_hash, block_parsed.Hash.ToString());
 
             var satoshi = "The Times 03/Jan/2009 Chancellor on brink of second bailout for bank";
 
@@ -256,6 +257,17 @@ namespace lib_test
                 
                 Assert.Equal(t.Value, res);
             }
+        }
+
+        [Fact]
+        public void Block_Parse_Sample()
+        {
+            var test_block = File.ReadAllBytes("test.dat");
+            //var test_block = File.ReadAllText("blk_535942").Trim().FromHex();
+            var bt = new Block();
+            bt.ReadFromPayload(test_block, 0);
+
+            Assert.Equal("00000000000000000008c45cfa71c551cc3437d08f989e094e87096370cb5ebc", bt.Hash.ToString());
         }
 
         [Fact]

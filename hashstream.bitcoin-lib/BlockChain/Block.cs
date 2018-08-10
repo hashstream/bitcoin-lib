@@ -12,6 +12,8 @@ namespace hashstream.bitcoin_lib.BlockChain
 
         public int Size => BlockHeader.Size + TxnCount.Size + Txns.Sum(a => a.Size);
 
+        public Hash Hash => Header.Hash;
+
         public Block() { }
 
         public Block(BlockHeader h) { Header = h; }
@@ -49,11 +51,6 @@ namespace hashstream.bitcoin_lib.BlockChain
             }
 
             return ret;
-        }
-
-        public Hash GetBlockHash()
-        {
-            return Header.GetBlockHeaderHash();
         }
     }
 }

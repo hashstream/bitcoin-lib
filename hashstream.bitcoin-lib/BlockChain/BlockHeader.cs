@@ -16,6 +16,8 @@ namespace hashstream.bitcoin_lib.BlockChain
 
         public static int Size => 80;
 
+        public Hash Hash => new Hash(ToArray().SHA256d());
+
         public int ReadFromPayload(byte[] data, int offset)
         {
             var roffset = offset;
@@ -43,11 +45,6 @@ namespace hashstream.bitcoin_lib.BlockChain
             ret.CopyAndIncr(BitConverter.GetBytes(Nonce), ref woffset);
 
             return ret;
-        }
-
-        public Hash GetBlockHeaderHash()
-        {
-            return new Hash(ToArray().SHA256d());
         }
     }
 }

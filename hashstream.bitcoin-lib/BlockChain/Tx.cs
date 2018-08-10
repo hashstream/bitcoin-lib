@@ -23,6 +23,8 @@ namespace hashstream.bitcoin_lib.BlockChain
 
         public int Size => (Flags != 0 ? 10 : 8) + TxInCount.Size + TxIn.Sum(a => ((Flags & 1) == 1 && AllowWitness ? a.NetworkSize : a.Size)) + TxOutCount.Size + TxOut.Sum(a => a.Size);
 
+        public Hash TxHash => new Hash(ToArray().SHA256d());
+
         public int ReadFromPayload(byte[] data, int offset)
         {
             var roffset = offset;
@@ -109,11 +111,6 @@ namespace hashstream.bitcoin_lib.BlockChain
             ret.CopyAndIncr(BitConverter.GetBytes(LockTime), ref woffset);
 
             return ret;
-        }
-
-        public Hash GetTxHash()
-        {
-            return new Hash(ToArray().SHA256d());
         }
 
         public bool HasWitness()
