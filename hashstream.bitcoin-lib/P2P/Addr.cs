@@ -7,13 +7,13 @@ namespace hashstream.bitcoin_lib.P2P
 {
     public class Addr : IStreamable, ICommand
     {
-        public VarInt IpCount { get; set; }
-        public IP[] Ips { get; set; }
+        public VarInt IpCount { get; set; } = new VarInt();
+        public IP[] Ips { get; set; } = new IP[0];
 
         public string Command => "addr";
 
         public int Size => IpCount.Size + (IP.Size * IpCount);
-
+        
         public int ReadFromPayload(byte[] data, int offset)
         {
             var roffset = offset;

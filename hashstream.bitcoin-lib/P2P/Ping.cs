@@ -12,6 +12,13 @@ namespace hashstream.bitcoin_lib.P2P
 
         public static int Size = 8;
 
+        public Ping()
+        {
+            var nonce = new byte[8];
+            new Random().NextBytes(nonce);
+            Nonce = BitConverter.ToUInt64(nonce, 0);
+        }
+
         public int ReadFromPayload(byte[] data, int offset)
         {
             Nonce = BitConverter.ToUInt64(data, offset);

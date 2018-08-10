@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -7,9 +8,9 @@ namespace hashstream.bitcoin_lib.P2P
 {
     public class MessageHeader : IStreamable, ICommand
     {
-        public uint Magic { get; set; } = 0xf9beb4d9;
+        public UInt32 Magic { get; set; } = 0xf9beb4d9;
         public string Command { get; set; }
-        public uint PayloadSize { get; set; }
+        public UInt32 PayloadSize { get; set; }
         public byte[] Checksum { get; set; }
 
         public static int Size => 24;
@@ -26,13 +27,8 @@ namespace hashstream.bitcoin_lib.P2P
                     header.PayloadSize = (uint)mp.Length;
 
                     //create the checksum of the payload
-                    using (var sha = SHA256.Create())
-                    {
-                        var h1 = sha.ComputeHash(mp);
-                        var h2 = sha.ComputeHash(h1);
-
-                        header.Checksum = new byte[] { h2[0], h2[1], h2[2], h2[3] };
-                    }
+                    var h2 = mp.SHA256d();
+                    header.Checksum = new byte[] { h2[0], h2[1], h2[2], h2[3] };
 
                     var hp = header.ToArray();
                     ms.Write(hp, 0, hp.Length);
@@ -52,10 +48,7 @@ namespace hashstream.bitcoin_lib.P2P
             var roffset = offset;
 
             Magic = data.ReadUInt32FromBuffer(ref roffset);
-
-            Command = System.Text.Encoding.ASCII.GetString(data, roffset, 12);
-            roffset += 12;
-
+            Command = data.ReadASCIIFromBuffer(ref roffset, 12);
             PayloadSize = data.ReadUInt32FromBuffer(ref roffset);
             Checksum = new byte[] { data[roffset], data[roffset + 1], data[roffset + 2], data[roffset + 3] };
 
@@ -66,8 +59,8 @@ namespace hashstream.bitcoin_lib.P2P
         {
             var woffset = 0;
             var ret = new byte[Size];
-
-            ret.CopyAndIncr(BitConverter.GetBytes(Magic), ref woffset);
+            
+            ret.CopyAndIncr(BitConverter.GetBytes(Magic), ref woffset, true);
             ret.CopyAndIncr(System.Text.Encoding.ASCII.GetBytes(Command), ref woffset);
             ret.CopyAndIncr(new byte[12 - Command.Length], ref woffset);
             ret.CopyAndIncr(BitConverter.GetBytes(PayloadSize), ref woffset);

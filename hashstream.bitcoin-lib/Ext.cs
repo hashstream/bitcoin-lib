@@ -3,6 +3,7 @@ using hashstream.bitcoin_lib.P2P;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
@@ -47,20 +48,22 @@ namespace hashstream.bitcoin_lib
             return BitConverter.ToString(data).Replace("-", "").ToLower();
         }
 
-        public static async Task ReadAsyncExact(this Stream s, byte[] buf, int offset, int count)
+        public static async Task<int> ReadAsyncExact(this Stream s, byte[] buf, int offset, int count)
         {
             var i_offset = 0;
 
             read_more:
             var rlen = await s.ReadAsync(buf, offset + i_offset, count - i_offset);
             if (rlen == 0)
-                return;
+                return 0;
 
             if(i_offset + rlen < count - i_offset)
             {
                 i_offset += rlen;
                 goto read_more;
             }
+
+            return count;
         }
 
         public static T[] Concat<T>(this T[] a, T[] b)
@@ -104,14 +107,22 @@ namespace hashstream.bitcoin_lib
             return data.SHA256().RIPEMD160();
         }
 
-        public static void CopyAndIncr(this byte[] dest, byte[] src, ref int offset)
+        public static void CopyAndIncr(this byte[] dest, byte[] src, ref int offset, bool reverse = false)
         {
+            if (reverse)
+            {
+                Array.Reverse(src);
+            }
             Array.Copy(src, 0, dest, offset, src.Length);
             offset += src.Length;
         }
 
-        public static void CopyAndIncr(this byte[] dest, byte[] src, int offset)
+        public static void CopyAndIncr(this byte[] dest, byte[] src, int offset, bool reverse = false)
         {
+            if (reverse)
+            {
+                Array.Reverse(src);
+            }
             Array.Copy(src, 0, dest, offset, src.Length);
         }
 
@@ -119,6 +130,14 @@ namespace hashstream.bitcoin_lib
         {
             var ret = new T();
             offset += ret.ReadFromPayload(src, offset);
+
+            return ret;
+        }
+
+        public static T ReadFromBuffer<T>(this byte[] src) where T : IStreamable, new()
+        {
+            var ret = new T();
+            ret.ReadFromPayload(src, 0);
 
             return ret;
         }

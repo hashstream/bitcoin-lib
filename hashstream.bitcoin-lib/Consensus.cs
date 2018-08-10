@@ -6,6 +6,6 @@ namespace hashstream.bitcoin_lib
 {
     public static class Consensus
     {
-        public static UInt32 Version => 700015;
+        public static UInt32 Version => 70015;
     }
 }

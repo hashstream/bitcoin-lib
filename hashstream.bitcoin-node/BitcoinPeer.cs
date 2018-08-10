@@ -11,6 +11,8 @@ namespace hashstream.bitcoin_node_lib
 
     public class BitcoinPeer
     {
+        public bool IsInbound { get; private set; }
+
         private Socket Sock { get; set; }
         private NetworkStream Stream { get; set; }
         private Task ReadTask { get; set; }
@@ -59,8 +61,9 @@ namespace hashstream.bitcoin_node_lib
         public event VerAckEvent OnVerAck;
         public event VersionEvent OnVersion;
 
-        public BitcoinPeer(Socket s)
+        public BitcoinPeer(Socket s, bool isInbound = false)
         {
+            IsInbound = isInbound;
             Sock = s;
             Sock.LingerState.Enabled = false;
             Stream = new NetworkStream(Sock);
@@ -107,7 +110,12 @@ namespace hashstream.bitcoin_node_lib
                 {
                     //try to read a header 
                     var hdata = new byte[24];
-                    await Stream.ReadAsyncExact(hdata, 0, hdata.Length);
+                    var rlen = await Stream.ReadAsyncExact(hdata, 0, hdata.Length);
+                    if(rlen == 0)
+                    {
+                        Stop();
+                        break;
+                    }
 
                     var h = new MessageHeader();
                     h.ReadFromPayload(hdata, 0);
@@ -116,244 +124,139 @@ namespace hashstream.bitcoin_node_lib
                         //read the payload
                         var pl = new byte[h.PayloadSize];
                         await Stream.ReadAsyncExact(pl, 0, pl.Length);
-                        bool checksumOk = false;
+                        var r0 = 0;
 
                         //verify hash
-                        using (var sha = SHA256.Create())
-                        {
-                            var h1 = sha.ComputeHash(pl);
-                            var h2 = sha.ComputeHash(h1);
+                        var h2 = pl.SHA256d();
 
-                            checksumOk = h2[0] == h.Checksum[0] && h2[1] == h.Checksum[1] && h2[2] == h.Checksum[2] && h2[3] == h.Checksum[3];
-                        }
-
-                        if (checksumOk)
+                        if (h2[0] == h.Checksum[0] && h2[1] == h.Checksum[1] && h2[2] == h.Checksum[2] && h2[3] == h.Checksum[3])
                         {
+                            Console.WriteLine($"Got cmd: {h.Command}");
+
                             switch (h.Command)
                             {
                                 case "addr\0\0\0\0\0\0\0\0":
                                     {
-                                        if (OnAddr != null)
-                                        {
-                                            var a = new Addr();
-                                            a.ReadFromPayload(pl, 0);
-
-                                            await OnAddr?.Invoke(this, a);
-                                        }
+                                        var a = pl.ReadFromBuffer<Addr>();
+                                        await OnAddr?.Invoke(this, a);
                                         break;
                                     }
                                 case "alert\0\0\0\0\0\0\0":
                                     {
-                                        if (OnAlert != null)
-                                        {
-                                            var a = new Alert();
-                                            a.ReadFromPayload(pl, 0);
-
-                                            await OnAlert?.Invoke(this, a);
-                                        }
+                                        var a = pl.ReadFromBuffer<Alert>();
+                                        await OnAlert?.Invoke(this, a);
                                         break;
                                     }
                                 case "feefilter\0\0\0":
                                     {
-                                        if (OnFeeFilter != null)
-                                        {
-                                            var f = new FeeFilter();
-                                            f.ReadFromPayload(pl, 0);
-
-                                            await OnFeeFilter?.Invoke(this, f);
-                                        }
+                                        var f = pl.ReadFromBuffer<FeeFilter>();
+                                        await OnFeeFilter?.Invoke(this, f);
                                         break;
                                     }
                                 case "filteradd\0\0\0":
                                     {
-                                        if (OnFilterAdd != null)
-                                        {
-                                            var f = new FilterAdd();
-                                            f.ReadFromPayload(pl, 0);
-
-                                            await OnFilterAdd?.Invoke(this, f);
-                                        }
+                                        var f = pl.ReadFromBuffer<FilterAdd>();
+                                        await OnFilterAdd?.Invoke(this, f);
                                         break;
                                     }
                                 case "filterclear\0":
                                     {
-                                        if (OnFilterClear != null)
-                                        {
-                                            var f = new FilterClear();
-                                            f.ReadFromPayload(pl, 0);
-
-                                            await OnFilterClear?.Invoke(this, f);
-                                        }
+                                        var f = pl.ReadFromBuffer<FilterClear>();
+                                        await OnFilterClear?.Invoke(this, f);
                                         break;
                                     }
                                 case "filterload\0\0":
                                     {
-                                        if (OnFilterLoad != null)
-                                        {
-                                            var f = new FilterLoad();
-                                            f.ReadFromPayload(pl, 0);
-
-                                            await OnFilterLoad?.Invoke(this, f);
-                                        }
+                                        var f = pl.ReadFromBuffer<FilterLoad>();
+                                        await OnFilterLoad?.Invoke(this, f);
                                         break;
                                     }
                                 case "getaddr\0\0\0\0\0":
                                     {
-                                        if (OnGetAddr != null)
-                                        {
-                                            var ga = new GetAddr();
-                                            ga.ReadFromPayload(pl, 0);
-
-                                            await OnGetAddr?.Invoke(this, ga);
-                                        }
+                                        var ga = pl.ReadFromBuffer<GetAddr>();
+                                        await OnGetAddr?.Invoke(this, ga);
                                         break;
                                     }
                                 case "getblocks\0\0\0":
                                     {
-                                        if (OnGetBlocks != null)
-                                        {
-                                            var gb = new GetBlocks();
-                                            gb.ReadFromPayload(pl, 0);
-
-                                            await OnGetBlocks?.Invoke(this, gb);
-                                        }
+                                        var gb = pl.ReadFromBuffer<GetBlocks>();
+                                        await OnGetBlocks?.Invoke(this, gb);
                                         break;
                                     }
                                 case "getdata\0\0\0\0\0":
                                     {
-                                        if (OnGetData != null)
-                                        {
-                                            var gd = new GetData();
-                                            gd.ReadFromPayload(pl, 0);
-
-                                            await OnGetData?.Invoke(this, gd);
-                                        }
+                                        var gd = pl.ReadFromBuffer<GetData>();
+                                        await OnGetData?.Invoke(this, gd);
                                         break;
                                     }
                                 case "getheaders\0\0":
                                     {
-                                        if (OnGetHeaders != null)
-                                        {
-                                            var gh = new GetHeaders();
-                                            gh.ReadFromPayload(pl, 0);
-
-                                            await OnGetHeaders?.Invoke(this, gh);
-                                        }
+                                        var gh = pl.ReadFromBuffer<GetHeaders>();
+                                        await OnGetHeaders?.Invoke(this, gh);
                                         break;
                                     }
                                 case "headers\0\0\0\0\0":
                                     {
-                                        if (OnHeaders != null)
-                                        {
-                                            var hd = new Headers();
-                                            hd.ReadFromPayload(pl, 0);
-
-                                            await OnHeaders?.Invoke(this, hd);
-                                        }
+                                        var hd = pl.ReadFromBuffer<Headers>();
+                                        await OnHeaders?.Invoke(this, hd);
                                         break;
                                     }
                                 case "inv\0\0\0\0\0\0\0\0\0":
                                     {
-                                        if (OnInv != null)
-                                        {
-                                            var iv = new Inv();
-                                            iv.ReadFromPayload(pl, 0);
-
-                                            await OnInv?.Invoke(this, iv);
-                                        }
+                                        var iv = pl.ReadFromBuffer<Inv>();
+                                        await OnInv?.Invoke(this, iv);
                                         break;
                                     }
                                 case "mempool\0\0\0\0\0":
                                     {
-                                        if (OnMemPool != null)
-                                        {
-                                            var mp = new MemPool();
-                                            mp.ReadFromPayload(pl, 0);
-
-                                            await OnMemPool?.Invoke(this, mp);
-                                        }
+                                        var mp = pl.ReadFromBuffer<MemPool>();
+                                        await OnMemPool?.Invoke(this, mp);
                                         break;
                                     }
                                 case "notfound\0\0\0\0":
                                     {
-                                        if (OnNotFound != null)
-                                        {
-                                            var nf = new NotFound();
-                                            nf.ReadFromPayload(pl, 0);
-
-                                            await OnNotFound?.Invoke(this, nf);
-                                        }
+                                        var nf = pl.ReadFromBuffer<NotFound>();
+                                        await OnNotFound?.Invoke(this, nf);
                                         break;
                                     }
                                 case "ping\0\0\0\0\0\0\0\0":
                                     {
-                                        if (OnPing != null)
-                                        {
-                                            var ping = new Ping();
-                                            ping.ReadFromPayload(pl, 0);
-
-                                            await OnPing?.Invoke(this, ping);
-                                        }
+                                        var ping = pl.ReadFromBuffer<Ping>();
+                                        await OnPing?.Invoke(this, ping);
                                         break;
                                     }
                                 case "pong\0\0\0\0\0\0\0\0":
                                     {
-                                        if (OnPong != null)
-                                        {
-                                            var pong = new Pong();
-                                            pong.ReadFromPayload(pl, 0);
-
-                                            await OnPong?.Invoke(this, pong);
-                                        }
+                                        var pong = pl.ReadFromBuffer<Pong>();
+                                        await OnPong?.Invoke(this, pong);
                                         break;
                                     }
                                 case "reject\0\0\0\0\0\0":
                                     {
-                                        if (OnReject != null)
-                                        {
-                                            var re = new Reject();
-                                            re.ReadFromPayload(pl, 0);
-
-                                            await OnReject?.Invoke(this, re);
-                                        }
+                                        var re = pl.ReadFromBuffer<Reject>();
+                                        await OnReject?.Invoke(this, re);
                                         break;
                                     }
                                 case "sendheaders\0":
                                     {
-                                        if (OnSendHeaders != null)
-                                        {
-                                            var sh = new SendHeaders();
-                                            sh.ReadFromPayload(pl, 0);
-
-                                            await OnSendHeaders?.Invoke(this, sh);
-                                        }
+                                        var sh = pl.ReadFromBuffer<SendHeaders>();
+                                        await OnSendHeaders?.Invoke(this, sh);
                                         break;
                                     }
                                 case "verack\0\0\0\0\0\0":
                                     {
-                                        if (OnVerAck != null)
-                                        {
-                                            var va = new VerAck();
-                                            va.ReadFromPayload(pl, 0);
-
-                                            await OnVerAck.Invoke(this, va);
-                                        }
+                                        var va = pl.ReadFromBuffer<VerAck>();
+                                        await OnVerAck?.Invoke(this, va);
                                         break;
                                     } 
                                 case "version\0\0\0\0\0":
                                     {
-                                        if (OnVersion != null)
-                                        {
-                                            var v = new bitcoin_lib.P2P.Version("");
-                                            v.ReadFromPayload(pl, 0);
-
-                                            await OnVersion?.Invoke(this, v);
-                                        }
+                                        var v = pl.ReadFromBuffer<bitcoin_lib.P2P.Version>();
+                                        await OnVersion?.Invoke(this, v);
                                         break;
                                     }
                                 default:
                                     {
-                                        //Console.WriteLine($"Got cmd: {h.Command}");
                                         break;
                                     }
                             }
@@ -376,7 +279,12 @@ namespace hashstream.bitcoin_node_lib
             var dt = MessageHeader.ToCommand(msg);
             if (dt != null)
             {
+                Console.WriteLine($"Sent cmd: {msg.Command}");
                 await Stream.WriteAsync(dt, 0, dt.Length);
+            }
+            else
+            {
+                Console.WriteLine("GOT NULL MSG");
             }
         }
     }

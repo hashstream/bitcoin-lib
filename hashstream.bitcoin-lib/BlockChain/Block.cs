@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace hashstream.bitcoin_lib.BlockChain
 {
-    public class Block : IStreamable
+    public class Block : IStreamable, ICommand
     {
         public BlockHeader Header { get; set; }
         public VarInt TxnCount { get; set; }
@@ -13,6 +13,8 @@ namespace hashstream.bitcoin_lib.BlockChain
         public int Size => BlockHeader.Size + TxnCount.Size + Txns.Sum(a => a.Size);
 
         public Hash Hash => Header.Hash;
+
+        public string Command => "block";
 
         public Block() { }
 

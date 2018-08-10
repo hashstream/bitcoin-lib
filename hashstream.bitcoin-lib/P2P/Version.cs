@@ -28,7 +28,8 @@ namespace hashstream.bitcoin_lib.P2P
 
         public Version()
         {
-
+            UserAgent = "";
+            UserAgentLength = new VarInt();
         }
 
         public Version(string ua)
@@ -68,11 +69,11 @@ namespace hashstream.bitcoin_lib.P2P
             ret.CopyAndIncr(BitConverter.GetBytes(Services), ref woffset);
             ret.CopyAndIncr(BitConverter.GetBytes(Timestamp), ref woffset);
             ret.CopyAndIncr(BitConverter.GetBytes(RecvServices), ref woffset);
-            ret.CopyAndIncr(RecvIp.GetAddressBytes(), ref woffset);
-            ret.CopyAndIncr(BitConverter.GetBytes(RecvPort), ref woffset);
+            ret.CopyAndIncr(RecvIp.MapToIPv6().GetAddressBytes(), ref woffset);
+            ret.CopyAndIncr(BitConverter.GetBytes(RecvPort), ref woffset, true);
             ret.CopyAndIncr(BitConverter.GetBytes(TransServices), ref woffset);
-            ret.CopyAndIncr(TransIp.GetAddressBytes(), ref woffset);
-            ret.CopyAndIncr(BitConverter.GetBytes(TransPort), ref woffset);
+            ret.CopyAndIncr(TransIp.MapToIPv6().GetAddressBytes(), ref woffset);
+            ret.CopyAndIncr(BitConverter.GetBytes(TransPort), ref woffset, true);
             ret.CopyAndIncr(BitConverter.GetBytes(Nonce), ref woffset);
             ret.CopyAndIncr(UserAgentLength.ToArray(), ref woffset);
             ret.CopyAndIncr(System.Text.Encoding.ASCII.GetBytes(UserAgent), ref woffset);

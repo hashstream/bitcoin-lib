@@ -8,10 +8,13 @@ namespace hashstream.bitcoin_lib.BlockChain
 {
     public class VarInt : IStreamable, IEquatable<UInt64>
     {
-        public UInt64 Value { get; set; }
-        public int Size { get; private set; }
+        public UInt64 Value { get; set; } = 0;
+        public int Size { get; private set; } = 1;
+        
+        public VarInt()
+        {
 
-        public VarInt() { }
+        }
 
         public VarInt(UInt64 v)
         {

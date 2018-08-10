@@ -7,11 +7,13 @@ namespace hashstream.bitcoin_node_lib
 {
     public class BitcoinNodePeer
     {
+        private Guid Id { get; set; }
         private BitcoinPeer Peer { get; set; }
-        private bitcoin_lib.P2P.Version Ver { get; set; }
-
-        public BitcoinNodePeer(BitcoinPeer p)
+        
+        public BitcoinNodePeer(BitcoinPeer p, Guid id)
         {
+            Id = id;
+
             Peer = p;
             Peer.OnAddr += Peer_OnAddr;
             Peer.OnAlert += Peer_OnAlert;
@@ -35,45 +37,71 @@ namespace hashstream.bitcoin_node_lib
             Peer.OnVersion += Peer_OnVersion;
 
             Peer.Start();
+        }
+
+        public async Task SendVersion(BitcoinPeer s = null)
+        {
+            if(s == null)
+            {
+                s = Peer;
+            }
 
             //Send version
-            Ver = new bitcoin_lib.P2P.Version($"/hashstream:0.0.1-alpha/");
+            var v = new bitcoin_lib.P2P.Version(BitcoinNode.UserAgent);
             var nd = new byte[9];
             new Random().NextBytes(nd);
-            Ver.Nonce = BitConverter.ToUInt64(nd, 0);
-            Ver.RecvIp = ((IPEndPoint)Peer.RemoteEndpoint).Address;
-            Ver.RecvPort = (UInt16)((IPEndPoint)Peer.RemoteEndpoint).Port;
-            Ver.RecvServices = 0;
-            Ver.StartHeight = 0;
-            Ver.Timestamp = (UInt64)DateTimeOffset.Now.ToUnixTimeSeconds();
-            Ver.TransIp = IPAddress.None;
-            Ver.TransPort = 0;
-            Ver.TransServices = (UInt64)Services.NODE_NETWORK;
 
-            Peer.WriteMessage(Ver);
+            v.Nonce = BitConverter.ToUInt64(nd, 0);
+            v.RecvIp = ((IPEndPoint)Peer.RemoteEndpoint).Address;
+            v.RecvPort = (UInt16)((IPEndPoint)Peer.RemoteEndpoint).Port;
+            v.RecvServices = 0;
+            v.StartHeight = 0;
+            v.Timestamp = (UInt64)DateTimeOffset.Now.ToUnixTimeSeconds();
+            v.TransIp = IPAddress.None;
+            v.TransPort = 0;
+            v.TransServices = (UInt64)Services.NODE_NETWORK;
+
+            await s.WriteMessage(v);
+        }
+
+        public async Task SendAddr(BitcoinPeer s)
+        {
+            var a = new Addr();
+
+            await s.WriteMessage(a);
         }
 
         private async Task Peer_OnVersion(BitcoinPeer s, bitcoin_lib.P2P.Version v)
         {
+            if (Peer.IsInbound)
+            {
+                await SendVersion(s);
+            }
+
             var va = new VerAck();
             await s.WriteMessage(va);
 
             Console.WriteLine($"Client connected {v.UserAgent}");
         }
 
-        private Task Peer_OnVerAck(BitcoinPeer s, VerAck va)
+        private async Task Peer_OnVerAck(BitcoinPeer s, VerAck va)
         {
-            throw new NotImplementedException();
+            if (Peer.IsInbound)
+            {
+                await SendAddr(s);
+            }
+
+            await s.WriteMessage(new Ping());
         }
 
-        private Task Peer_OnSendHeaders(BitcoinPeer s, SendHeaders sh)
+        private async Task Peer_OnSendHeaders(BitcoinPeer s, SendHeaders sh)
         {
-            throw new NotImplementedException();
+            
         }
 
-        private Task Peer_OnReject(BitcoinPeer s, Reject r)
+        private async Task Peer_OnReject(BitcoinPeer s, Reject r)
         {
-            throw new NotImplementedException();
+            
         }
 
         private async Task Peer_OnPong(BitcoinPeer s, Pong p)
@@ -89,74 +117,74 @@ namespace hashstream.bitcoin_node_lib
             await s.WriteMessage(pong);
         }
 
-        private Task Peer_OnNotFound(BitcoinPeer s, NotFound nf)
+        private async Task Peer_OnNotFound(BitcoinPeer s, NotFound nf)
         {
-            throw new NotImplementedException();
+           
         }
 
-        private Task Peer_OnMemPool(BitcoinPeer s, MemPool mp)
+        private async Task Peer_OnMemPool(BitcoinPeer s, MemPool mp)
         {
-            throw new NotImplementedException();
+            
         }
 
-        private Task Peer_OnInv(BitcoinPeer s, Inv i)
+        private async Task Peer_OnInv(BitcoinPeer s, Inv i)
         {
-            throw new NotImplementedException();
+            
         }
 
-        private Task Peer_OnHeaders(BitcoinPeer s, Headers h)
+        private async Task Peer_OnHeaders(BitcoinPeer s, Headers h)
         {
-            throw new NotImplementedException();
+            
         }
 
-        private Task Peer_OnGetHeaders(BitcoinPeer s, GetHeaders gh)
+        private async Task Peer_OnGetHeaders(BitcoinPeer s, GetHeaders gh)
         {
-            throw new NotImplementedException();
+            
         }
 
-        private Task Peer_OnGetData(BitcoinPeer s, GetData gd)
+        private async Task Peer_OnGetData(BitcoinPeer s, GetData gd)
         {
-            throw new NotImplementedException();
+            
         }
 
-        private Task Peer_OnGetBlocks(BitcoinPeer s, GetBlocks gb)
+        private async Task Peer_OnGetBlocks(BitcoinPeer s, GetBlocks gb)
         {
-            throw new NotImplementedException();
+            
         }
 
-        private Task Peer_OnGetAddr(BitcoinPeer s, GetAddr a)
+        private async Task Peer_OnGetAddr(BitcoinPeer s, GetAddr a)
         {
-            throw new NotImplementedException();
+            
         }
 
-        private Task Peer_OnFilterLoad(BitcoinPeer s, FilterLoad f)
+        private async Task Peer_OnFilterLoad(BitcoinPeer s, FilterLoad f)
         {
-            throw new NotImplementedException();
+            
         }
 
-        private Task Peer_OnFilterClear(BitcoinPeer s, FilterClear f)
+        private async Task Peer_OnFilterClear(BitcoinPeer s, FilterClear f)
         {
-            throw new NotImplementedException();
+            
         }
 
-        private Task Peer_OnFilterAdd(BitcoinPeer s, FilterAdd f)
+        private async Task Peer_OnFilterAdd(BitcoinPeer s, FilterAdd f)
         {
-            throw new NotImplementedException();
+            
         }
 
-        private Task Peer_OnFeeFilter(BitcoinPeer s, FeeFilter f)
+        private async Task Peer_OnFeeFilter(BitcoinPeer s, FeeFilter f)
         {
-            throw new NotImplementedException();
+            
         }
 
-        private Task Peer_OnAlert(BitcoinPeer s, Alert a)
+        private async Task Peer_OnAlert(BitcoinPeer s, Alert a)
         {
-            throw new NotImplementedException();
+            
         }
 
-        private Task Peer_OnAddr(BitcoinPeer s, Addr a)
+        private async Task Peer_OnAddr(BitcoinPeer s, Addr a)
         {
-            throw new NotImplementedException();
+            
         }
     }
 }
