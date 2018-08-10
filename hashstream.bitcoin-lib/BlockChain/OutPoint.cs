@@ -1,7 +1,5 @@
 ﻿using hashstream.bitcoin_lib.P2P;
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace hashstream.bitcoin_lib.BlockChain
 {
@@ -10,23 +8,25 @@ namespace hashstream.bitcoin_lib.BlockChain
         public Hash Hash { get; set; }
         public UInt32 Index { get; set; }
 
-        public int Size => 36;
+        public static int Size => Hash.Size + 4;
 
-        public void ReadFromPayload(byte[] data, int offset)
+        public int ReadFromPayload(byte[] data, int offset)
         {
-            Hash = new Hash();
-            Hash.ReadFromPayload(data, offset);
+            var roffset = offset;
 
-            Index = BitConverter.ToUInt32(data, offset + 32);
+            Hash = data.ReadFromBuffer<Hash>(ref roffset);
+            Index = data.ReadUInt32FromBuffer(ref roffset);
+
+            return Size;
         }
 
         public byte[] ToArray()
         {
+            var woffset = 0;
             var ret = new byte[Size];
-            Array.Copy(Hash.HashBytes, 0, ret, 0, Hash.HashBytes.Length);
 
-            var id = BitConverter.GetBytes(Index);
-            Array.Copy(id, 0, ret, 32, id.Length);
+            ret.CopyAndIncr(Hash.NetworkHashBytes, ref woffset);
+            ret.CopyAndIncr(BitConverter.GetBytes(Index), ref woffset);
 
             return ret;
         }

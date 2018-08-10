@@ -10,33 +10,33 @@ namespace hashstream.bitcoin_lib.P2P
 
         public string Command => "headers";
 
-        public void ReadFromPayload(byte[] data, int offset)
-        {
-            Count = new VarInt(0);
-            Count.ReadFromPayload(data, offset);
-            Header = new BlockHeader[Count];
+        public int Size => Count.Size + (BlockHeader.Size * Count);
 
+        public int ReadFromPayload(byte[] data, int offset)
+        {
+            var roffset = offset;
+
+            Count = data.ReadFromBuffer<VarInt>(ref roffset);
+
+            Header = new BlockHeader[Count];
             for (var x = 0; x < Count; x++)
             {
-                var bh = new BlockHeader();
-                bh.ReadFromPayload(data, offset + Count.Size + (80 * x));
-
-                Header[x] = bh;
+                Header[x] = data.ReadFromBuffer<BlockHeader>(ref roffset);
             }
+
+            return Size;
         }
 
         public byte[] ToArray()
         {
-            var ret = new byte[Count.Size + (Count * 80)];
+            var woffset = 0;
+            var ret = new byte[Size];
 
-            var c = Count.ToArray();
-            Array.Copy(c, 0, ret, 0, c.Length);
+            ret.CopyAndIncr(Count.ToArray(), ref woffset);
 
-            for (var x = 0; x < Count; x++)
+            foreach(var header in Header)
             {
-                var bh = Header[x];
-                var dt = bh.ToArray();
-                Array.Copy(dt, 0, ret, Count.Size + (x * 80), dt.Length);
+                ret.CopyAndIncr(header.ToArray(), ref woffset);
             }
 
             return ret;

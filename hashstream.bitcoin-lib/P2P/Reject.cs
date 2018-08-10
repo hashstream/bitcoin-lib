@@ -30,21 +30,26 @@ namespace hashstream.bitcoin_lib.P2P
 
         public int Size => MessageLength + MessageLength.Size + ReasonLength.Size + ReasonLength + Extra.Length + 1;
 
-        public void ReadFromPayload(byte[] data, int offset)
+        public int ReadFromPayload(byte[] data, int offset)
         {
-            MessageLength = new VarInt(0);
-            MessageLength.ReadFromPayload(data, offset);
+            var roffset = offset;
 
-            Message = System.Text.Encoding.ASCII.GetString(data, offset + MessageLength.Size, MessageLength);
-            Code = data[offset + MessageLength + MessageLength.Size];
+            MessageLength = data.ReadFromBuffer<VarInt>(ref roffset);
 
-            ReasonLength = new VarInt(0);
-            ReasonLength.ReadFromPayload(data, offset + MessageLength + MessageLength.Size + 1);
+            Message = System.Text.Encoding.ASCII.GetString(data, roffset, MessageLength);
+            roffset += MessageLength;
 
-            Reason = System.Text.Encoding.ASCII.GetString(data, offset + MessageLength + MessageLength.Size + 1 + ReasonLength.Size, ReasonLength);
-            var of = offset + MessageLength + MessageLength.Size + 1 + ReasonLength.Size + ReasonLength;
-            Extra = new byte[data.Length - of]; // ew no length = we have to rely on the length of the buffer (reading more "Extra" than we should)
-            Array.Copy(data, of, Extra, 0, Extra.Length);
+            Code = data[roffset];
+
+            ReasonLength = data.ReadFromBuffer<VarInt>(ref roffset);
+            Reason = System.Text.Encoding.ASCII.GetString(data, roffset, ReasonLength);
+            roffset += ReasonLength;
+
+            // ew no length = we have to rely on the length of the buffer (reading more "Extra" than we should)
+            Extra = new byte[data.Length - roffset]; 
+            Array.Copy(data, roffset, Extra, 0, Extra.Length);
+
+            return Size;
         }
 
         public byte[] ToArray()

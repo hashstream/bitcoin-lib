@@ -17,12 +17,16 @@ namespace hashstream.bitcoin_lib.Script
         public static int WITNESS_V0_SCRIPTHASH_SIZE => 32;
         public static int WITNESS_V0_KEYHASH_SIZE => 20;
 
-        public VarInt Length { get; internal set; }
-        public byte[] ScriptBytes { get; internal set; }
-        public ScriptFrame[] ParsedScript { get; internal set; }
+        public VarInt Length { get; set; }
+        public byte[] ScriptBytes { get; set; }
+        public ScriptFrame[] ParsedScript { get; set; }
+
         public int Size => Length + Length.Size;
 
-        public Script() { }
+        public Script()
+        {
+
+        }
 
         public Script(byte[] data, bool parse = true)
         {
@@ -35,20 +39,31 @@ namespace hashstream.bitcoin_lib.Script
             }
         }
 
-        public void ReadFromPayload(byte[] data, int offset)
+        public int ReadFromPayload(byte[] data, int offset)
         {
-            Length = new VarInt(0);
-            Length.ReadFromPayload(data, offset);
+            var roffset = offset;
+            Length = data.ReadFromBuffer<VarInt>(ref roffset);
 
+            if(Length < 0 || Length > offset + Length.Size + data.Length || Length > MAX_SCRIPT_SIZE)
+            {
+                throw new Exception($"Impossible script length {Length}");
+            }
             ScriptBytes = new byte[Length];
-            Array.Copy(data, offset + Length.Size, ScriptBytes, 0, ScriptBytes.Length);
+            if (Length > 0)
+            {
+                Array.Copy(data, roffset, ScriptBytes, 0, ScriptBytes.Length);
+            }
+
+            return Size;
         }
 
         public byte[] ToArray()
         {
             var ret = new byte[Length.Size + Length];
-            Array.Copy(Length.ToArray(), ret, Length.Size);
-            Array.Copy(ScriptBytes, 0, ret, Length.Size, ScriptBytes.Length);
+
+            var woffset = 0;
+            ret.CopyAndIncr(Length.ToArray(), ref woffset);
+            ret.CopyAndIncr(ScriptBytes, ref woffset);
 
             return ret;
         }

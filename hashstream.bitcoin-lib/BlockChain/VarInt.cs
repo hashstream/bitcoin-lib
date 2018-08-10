@@ -11,6 +11,8 @@ namespace hashstream.bitcoin_lib.BlockChain
         public UInt64 Value { get; set; }
         public int Size { get; private set; }
 
+        public VarInt() { }
+
         public VarInt(UInt64 v)
         {
             Value = v;
@@ -42,7 +44,7 @@ namespace hashstream.bitcoin_lib.BlockChain
             return TypeCode.UInt64;
         }
 
-        public void ReadFromPayload(byte[] header, int offset)
+        public int ReadFromPayload(byte[] header, int offset)
         {
             var b1 = header[offset];
 
@@ -68,8 +70,10 @@ namespace hashstream.bitcoin_lib.BlockChain
             }
             else
             {
-                Console.Write("FUCK");
+                throw new Exception("WTF!");
             }
+
+            return Size;
         }
 
         public byte[] ToArray()
@@ -116,6 +120,11 @@ namespace hashstream.bitcoin_lib.BlockChain
         public static int operator +(VarInt a, int b)
         {
             return (int)a.Value + b;
+        }
+
+        public override string ToString()
+        {
+            return Value.ToString();
         }
     }
 }

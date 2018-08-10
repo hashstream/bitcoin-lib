@@ -11,31 +11,29 @@ namespace hashstream.bitcoin_lib.BlockChain
         public WitnessScript WitnessScripts { get; set; }
         public UInt32 Sequence { get; set; } = 0xffffffff;
 
-        public int Size => 40 + Script.Size;
+        public int Size => Outpoint.Size + 4 + Script.Size;
 
-        public void ReadFromPayload(byte[] data, int offset)
+        //this is only used by Tx serializer, witness scripts are at the end of the Tx buffer
+        public int NetworkSize => Size + (WitnessScripts != null ? WitnessScripts.Size : 0);
+
+        public int ReadFromPayload(byte[] data, int offset)
         {
-            Previous = new Outpoint();
-            Previous.ReadFromPayload(data, offset);
+            var roffset = offset;
+            Previous = data.ReadFromBuffer<Outpoint>(ref roffset);
+            Script = data.ReadFromBuffer<StandardScript>(ref roffset);
+            Sequence = data.ReadUInt32FromBuffer(ref roffset);
 
-            Script = new StandardScript();
-            Script.ReadFromPayload(data, offset + Previous.Size);
-
-            Sequence = BitConverter.ToUInt32(data, (int)(offset + Previous.Size + Script.Size));
+            return Size;
         }
 
         public byte[] ToArray()
         {
+            var woffset = 0;
             var ret = new byte[Size];
 
-            var p = Previous.ToArray();
-            Array.Copy(p, 0, ret, 0, p.Length);
-
-            var sc = Script.ToArray();
-            Array.Copy(sc, 0, ret, p.Length, sc.Length);
-
-            var sq = BitConverter.GetBytes(Sequence);
-            Array.Copy(sq, 0, ret, p.Length + sc.Length, sq.Length);
+            ret.CopyAndIncr(Previous.ToArray(), ref woffset);
+            ret.CopyAndIncr(Script.ToArray(), ref woffset);
+            ret.CopyAndIncr(BitConverter.GetBytes(Sequence), ref woffset);
 
             return ret;
         }

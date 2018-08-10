@@ -17,31 +17,31 @@ namespace hashstream.bitcoin_lib.P2P
 
         public int Size => 9 + FilterBytes + FilterBytes.Size;
 
-        public void ReadFromPayload(byte[] data, int offset)
+        public int ReadFromPayload(byte[] data, int offset)
         {
-            FilterBytes = new VarInt(0);
-            FilterBytes.ReadFromPayload(data, offset);
+            var roffset = offset;
+            FilterBytes = data.ReadFromBuffer<VarInt>(ref roffset);
 
             Filter = new byte[FilterBytes];
-            Array.Copy(data, offset + FilterBytes.Size, Filter, 0, Filter.Length);
+            Array.Copy(data, roffset + FilterBytes.Size, Filter, 0, Filter.Length);
+            roffset += FilterBytes.Size + FilterBytes;
 
-            HashFunctions = BitConverter.ToUInt32(data, offset + FilterBytes + FilterBytes.Size);
-            Tweak = BitConverter.ToUInt32(data, offset + FilterBytes + FilterBytes.Size + 4);
-            Flags = data[offset + FilterBytes + FilterBytes.Size + 8];
+            HashFunctions = data.ReadUInt32FromBuffer(ref roffset);
+            Tweak = data.ReadUInt32FromBuffer(ref roffset);
+            Flags = data[roffset];
+
+            return Size;
         }
 
         public byte[] ToArray()
         {
+            var woffset = 0;
             var ret = new byte[Size];
-            var fb = FilterBytes.ToArray();
-            Array.Copy(fb, 0, ret, 0, fb.Length);
-            Array.Copy(Filter, 0, ret, fb.Length, Filter.Length);
 
-            var hf = BitConverter.GetBytes(HashFunctions);
-            Array.Copy(hf, 0, ret, fb.Length + Filter.Length, hf.Length);
-
-            var tw = BitConverter.GetBytes(Tweak);
-            Array.Copy(tw, 0, ret, fb.Length + Filter.Length + hf.Length, tw.Length);
+            ret.CopyAndIncr(FilterBytes.ToArray(), ref woffset);
+            ret.CopyAndIncr(Filter, ref woffset);
+            ret.CopyAndIncr(BitConverter.GetBytes(HashFunctions), ref woffset);
+            ret.CopyAndIncr(BitConverter.GetBytes(Tweak), woffset);
 
             ret[ret.Length - 1] = Flags;
 

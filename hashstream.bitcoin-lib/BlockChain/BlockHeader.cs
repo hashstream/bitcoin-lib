@@ -14,43 +14,40 @@ namespace hashstream.bitcoin_lib.BlockChain
         public UInt32 Target { get; set; }
         public UInt32 Nonce { get; set; }
 
-        public int Size => 80;
+        public static int Size => 80;
 
-        public void ReadFromPayload(byte[] data, int offset)
+        public int ReadFromPayload(byte[] data, int offset)
         {
-            Version = BitConverter.ToUInt32(data, offset);
-            PrevBlock = new Hash();
-            PrevBlock.ReadFromPayload(data, offset + 4);
-            MerkleRoot = new Hash();
-            MerkleRoot.ReadFromPayload(data, offset + 36);
-            Time = BitConverter.ToUInt32(data, offset + 68);
-            Target = BitConverter.ToUInt32(data, offset + 72);
-            Nonce = BitConverter.ToUInt32(data, offset + 76);
+            var roffset = offset;
+
+            Version = data.ReadUInt32FromBuffer(ref roffset);
+            PrevBlock = data.ReadFromBuffer<Hash>(ref roffset);
+            MerkleRoot = data.ReadFromBuffer<Hash>(ref roffset);
+            Time = data.ReadUInt32FromBuffer(ref roffset);
+            Target = data.ReadUInt32FromBuffer(ref roffset);
+            Nonce = data.ReadUInt32FromBuffer(ref roffset);
+
+            return Size;
         }
 
         public byte[] ToArray()
         {
+            var woffset = 0;
             var ret = new byte[Size];
 
-            var v = BitConverter.GetBytes(Version);
-            Array.Copy(v, 0, ret, 0, v.Length);
-
-            var pb = PrevBlock.ToArray();
-            Array.Copy(pb, 0, ret, 4, pb.Length);
-
-            var mr = MerkleRoot.ToArray();
-            Array.Copy(mr, 0, ret, 36, mr.Length);
-
-            var t = BitConverter.GetBytes(Time);
-            Array.Copy(t, 0, ret, 68, t.Length);
-
-            var nb = BitConverter.GetBytes(Target);
-            Array.Copy(nb, 0, ret, 72, nb.Length);
-
-            var nn = BitConverter.GetBytes(Nonce);
-            Array.Copy(nn, 0, ret, 76, nn.Length);
+            ret.CopyAndIncr(BitConverter.GetBytes(Version), ref woffset);
+            ret.CopyAndIncr(PrevBlock.ToArray(), ref woffset);
+            ret.CopyAndIncr(MerkleRoot.ToArray(), ref woffset);
+            ret.CopyAndIncr(BitConverter.GetBytes(Time), ref woffset);
+            ret.CopyAndIncr(BitConverter.GetBytes(Target), ref woffset);
+            ret.CopyAndIncr(BitConverter.GetBytes(Nonce), ref woffset);
 
             return ret;
+        }
+
+        public Hash GetBlockHeaderHash()
+        {
+            return new Hash(ToArray().SHA256d());
         }
     }
 }

@@ -12,6 +12,8 @@ namespace hashstream.bitcoin_lib.P2P
         public uint PayloadSize { get; set; }
         public byte[] Checksum { get; set; }
 
+        public static int Size => 24;
+
         public static byte[] ToCommand<T>(T msg) where T : ICommand, IStreamable
         {
             if (msg != null)
@@ -45,39 +47,33 @@ namespace hashstream.bitcoin_lib.P2P
             }
         }
 
-        public void ReadFromPayload(byte[] header, int offset)
+        public int ReadFromPayload(byte[] data, int offset)
         {
-            Magic = BitConverter.ToUInt32(header, offset);
-            Command = System.Text.Encoding.ASCII.GetString(header, offset + 4, 12);
-            PayloadSize = BitConverter.ToUInt32(header, offset + 16);
-            Checksum = new byte[] { header[20], header[21], header[22], header[23] };
+            var roffset = offset;
+
+            Magic = data.ReadUInt32FromBuffer(ref roffset);
+
+            Command = System.Text.Encoding.ASCII.GetString(data, roffset, 12);
+            roffset += 12;
+
+            PayloadSize = data.ReadUInt32FromBuffer(ref roffset);
+            Checksum = new byte[] { data[roffset], data[roffset + 1], data[roffset + 2], data[roffset + 3] };
+
+            return Size;
         }
 
         public byte[] ToArray()
         {
-            var pl = new byte[][]
-            {
-                BitConverter.GetBytes(Magic),
-                System.Text.Encoding.ASCII.GetBytes(Command),
-                new byte[12-Command.Length],
-                BitConverter.GetBytes(PayloadSize),
-                Checksum
-            };
+            var woffset = 0;
+            var ret = new byte[Size];
 
-            if (BitConverter.IsLittleEndian)
-            {
-                Array.Reverse(pl[0]);
-            }
+            ret.CopyAndIncr(BitConverter.GetBytes(Magic), ref woffset);
+            ret.CopyAndIncr(System.Text.Encoding.ASCII.GetBytes(Command), ref woffset);
+            ret.CopyAndIncr(new byte[12 - Command.Length], ref woffset);
+            ret.CopyAndIncr(BitConverter.GetBytes(PayloadSize), ref woffset);
+            ret.CopyAndIncr(Checksum, woffset);
 
-            using (var ms = new MemoryStream())
-            {
-                foreach (var b in pl)
-                {
-                    ms.Write(b, 0, b.Length);
-                }
-
-                return ms.ToArray();
-            }
+            return ret;
         }
     }
 }

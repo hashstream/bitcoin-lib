@@ -1,7 +1,5 @@
 ﻿using hashstream.bitcoin_lib.BlockChain;
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace hashstream.bitcoin_lib.P2P
 {
@@ -12,23 +10,26 @@ namespace hashstream.bitcoin_lib.P2P
 
         public string Command => "filteradd";
 
-        public void ReadFromPayload(byte[] data, int offset)
+        public int Size => ElementCount.Size + ElementCount;
+
+        public int ReadFromPayload(byte[] data, int offset)
         {
-            ElementCount = new VarInt(0);
-            ElementCount.ReadFromPayload(data, offset);
+            var roffset = offset;
+            ElementCount = data.ReadFromBuffer<VarInt>(ref roffset);
 
             Elements = new byte[ElementCount];
-            Array.Copy(Elements, offset + ElementCount, Elements, 0, ElementCount);
+            Array.Copy(data, roffset, Elements, 0, ElementCount);
+
+            return Size;
         }
 
         public byte[] ToArray()
         {
-            var ret = new byte[ElementCount.Size + ElementCount];
+            var woffset = 0;
+            var ret = new byte[Size];
 
-            var ec = ElementCount.ToArray();
-            Array.Copy(ec, 0, ret, 0, ec.Length);
-
-            Array.Copy(Elements, 0, ret, ec.Length, Elements.Length);
+            ret.CopyAndIncr(ElementCount.ToArray(), ref woffset);
+            ret.CopyAndIncr(Elements, woffset);
 
             return ret;
         }

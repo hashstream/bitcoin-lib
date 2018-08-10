@@ -13,46 +13,42 @@ namespace hashstream.bitcoin_lib.P2P
 
         public string Command => "getblocks";
 
-        public void ReadFromPayload(byte[] data, int offset)
+        public int Size => 4 + HashCount.Size + (Hash.Size * HashCount) + Hash.Size;
+
+        public int ReadFromPayload(byte[] data, int offset)
         {
-            Version = BitConverter.ToUInt32(data, offset);
-            HashCount = new VarInt(0);
-            HashCount.ReadFromPayload(data, 4);
+            var roffset = offset;
+            Version = data.ReadUInt32FromBuffer(ref roffset);
+            HashCount = data.ReadFromBuffer<VarInt>(ref roffset);
 
             Hashes = new Hash[HashCount];
 
             for (var x = 0; x < HashCount; x++)
             {
-                var ch = new Hash() { HashBytes = new byte[32] };
-                Array.Copy(data, offset + 4 + HashCount.Size + (ch.HashBytes.Length * x), ch.HashBytes, 0, ch.HashBytes.Length);
-
-                Hashes[x] = ch;
+                Hashes[x] = data.ReadFromBuffer<Hash>(ref roffset);
             }
 
-            StopHash = new Hash() { HashBytes = new byte[32] };
-            Array.Copy(data, offset + 4 + HashCount.Size + (HashCount * 32), StopHash.HashBytes, 0, StopHash.HashBytes.Length);
+            StopHash = data.ReadFromBuffer<Hash>(ref roffset);
+
+            return Size;
         }
 
         public byte[] ToArray()
         {
-            using (var ms = new MemoryStream())
+            var woffset = 0;
+            var ret = new byte[Size];
+
+            ret.CopyAndIncr(BitConverter.GetBytes(Version), ref woffset);
+            ret.CopyAndIncr(HashCount.ToArray(), ref woffset);
+
+            foreach(var hash in Hashes)
             {
-                var v = BitConverter.GetBytes(Version);
-                ms.Write(v, 0, v.Length);
-
-                var hc = HashCount.ToArray();
-                ms.Write(hc, 0, hc.Length);
-
-                for (var x = 0; x < HashCount; x++)
-                {
-                    var xh = Hashes[x].HashBytes;
-                    ms.Write(xh, 0, xh.Length);
-                }
-
-                ms.Write(StopHash.HashBytes, 0, StopHash.HashBytes.Length);
-
-                return ms.ToArray();
+                ret.CopyAndIncr(hash.ToArray(), ref woffset);
             }
+
+            ret.CopyAndIncr(StopHash.ToArray(), woffset);
+
+            return ret;
         }
     }
 }

@@ -1,7 +1,5 @@
 ﻿using hashstream.bitcoin_lib.BlockChain;
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace hashstream.bitcoin_lib.P2P
 {
@@ -13,55 +11,47 @@ namespace hashstream.bitcoin_lib.P2P
         public Hash[] Hashes { get; set; }
         public VarInt FlagByteCount { get; set; }
         public byte[] Flags { get; set; }
-       
-        public void ReadFromPayload(byte[] data, int offset)
+
+        public int Size => BlockHeader.Size + 4 + HashCount.Size + (Hash.Size * HashCount) + FlagByteCount.Size + FlagByteCount;
+
+        public int ReadFromPayload(byte[] data, int offset)
         {
-            BlockHeader = new BlockHeader();
-            BlockHeader.ReadFromPayload(data, offset);
+            var roffset = offset;
 
-            Transactions = BitConverter.ToUInt32(data, offset + 80);
-            HashCount = new VarInt(0);
-            HashCount.ReadFromPayload(data, offset + 84);
+            BlockHeader = data.ReadFromBuffer<BlockHeader>(ref roffset);
+            Transactions = data.ReadUInt32FromBuffer(ref roffset);
+            HashCount = data.ReadFromBuffer<VarInt>(ref roffset);
+
             Hashes = new Hash[HashCount];
-
             for (var x = 0; x < HashCount; x++)
             {
-                var nh = new Hash();
-                nh.ReadFromPayload(data, offset + 84 + HashCount.Size + (x * 32));
-
-                Hashes[x] = nh;
+                Hashes[x] = data.ReadFromBuffer<Hash>(ref roffset);
             }
 
-            FlagByteCount = new VarInt(0);
-            FlagByteCount.ReadFromPayload(data, offset + 84 + HashCount.Size + (HashCount * 32));
+            FlagByteCount = data.ReadFromBuffer<VarInt>(ref roffset);
 
             Flags = new byte[FlagByteCount];
-            Array.Copy(data, offset + 84 + HashCount.Size + (HashCount * 32) + FlagByteCount.Size, Flags, 0, Flags.Length);
+            Array.Copy(data, roffset, Flags, 0, Flags.Length);
+
+            return Size;
         }
 
         public byte[] ToArray()
         {
-            var ret = new byte[84 + HashCount.Size + FlagByteCount.Size + FlagByteCount + (32 * HashCount)];
+            var woffset = 0;
+            var ret = new byte[Size];
 
-            var bh = BlockHeader.ToArray();
-            Array.Copy(bh, 0, ret, 0, bh.Length);
+            ret.CopyAndIncr(BlockHeader.ToArray(), ref woffset);
+            ret.CopyAndIncr(BitConverter.GetBytes(Transactions), ref woffset);
+            ret.CopyAndIncr(HashCount.ToArray(), ref woffset);
 
-            var tr = BitConverter.GetBytes(Transactions);
-            Array.Copy(tr, 0, ret, 80, tr.Length);
-
-            var hc = HashCount.ToArray();
-            Array.Copy(hc, 0, ret, 84, hc.Length);
-
-            for (var x = 0; x < HashCount; x++)
+            foreach(var h in Hashes)
             {
-                var hx = Hashes[x].ToArray();
-                Array.Copy(hx, 0, ret, 84 + hc.Length + (x * 32), hx.Length);
+                ret.CopyAndIncr(h.ToArray(), ref woffset);
             }
 
-            var fb = FlagByteCount.ToArray();
-            Array.Copy(fb, 0, ret, 84 + hc.Length + (32 * HashCount), fb.Length);
-
-            Array.Copy(Flags, 0, ret, 84 + hc.Length + (32 * HashCount) + fb.Length, Flags.Length);
+            ret.CopyAndIncr(FlagByteCount.ToArray(), ref woffset);
+            ret.CopyAndIncr(Flags, woffset);
 
             return ret;
 

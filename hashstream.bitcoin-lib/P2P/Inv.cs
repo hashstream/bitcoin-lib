@@ -12,32 +12,32 @@ namespace hashstream.bitcoin_lib.P2P
 
         public string Command => "inv";
 
-        public void ReadFromPayload(byte[] data, int offset)
-        {
-            Count = new VarInt(0);
-            Count.ReadFromPayload(data, offset);
-            Inventory = new Inventory[Count];
+        public int Size => Count.Size + (P2P.Inventory.Size * Count);
 
-            //read all
+        public int ReadFromPayload(byte[] data, int offset)
+        {
+            var roffset = offset;
+            Count = data.ReadFromBuffer<VarInt>(ref roffset);
+
+            Inventory = new Inventory[Count];
             for (var x = 0; x < Count; x++)
             {
-                var ni = new Inventory();
-                ni.ReadFromPayload(data, offset + Count.Size + (36 * x));
-
-                Inventory[x] = ni;
+                Inventory[x] = data.ReadFromBuffer<Inventory>(ref roffset);
             }
+
+            return Size;
         }
 
         public byte[] ToArray()
         {
-            var ret = new byte[8 + (36 * Inventory.Length)];
-            var c = Count.ToArray();
-            Array.Copy(c, 0, ret, 0, Count.Size);
+            var woffset = 0;
+            var ret = new byte[Size];
 
-            for (var x = 0; x < Count; x++)
+            ret.CopyAndIncr(Count.ToArray(), ref woffset);
+
+            foreach(var inv in Inventory)
             {
-                var ni = Inventory[x].ToArray();
-                Array.Copy(ni, 0, ret, Count.Size + (36 * x), ni.Length);
+                ret.CopyAndIncr(inv.ToArray(), ref woffset);
             }
 
             return ret;

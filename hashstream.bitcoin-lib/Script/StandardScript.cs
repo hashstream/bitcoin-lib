@@ -1,5 +1,6 @@
 ﻿using hashstream.bitcoin_lib.BlockChain;
 using hashstream.bitcoin_lib.Crypto;
+using hashstream.bitcoin_lib.P2P;
 using System;
 
 namespace hashstream.bitcoin_lib.Script
@@ -50,8 +51,13 @@ namespace hashstream.bitcoin_lib.Script
         SCRIPT_VERIFY_CONST_SCRIPTCODE = (1 << 16)
     }
 
-    public class StandardScript : Script
+    public class StandardScript : Script, IStreamable
     {
+        public StandardScript() : base()
+        {
+
+        }
+
         public TxOutType TxType
         {
             get
@@ -121,14 +127,16 @@ namespace hashstream.bitcoin_lib.Script
             }
         }
 
-        public new void ReadFromPayload(byte[] data, int offset)
+        public new int ReadFromPayload(byte[] data, int offset)
         {
-            base.ReadFromPayload(data, offset);
+            var ret = base.ReadFromPayload(data, offset);
             //only parse standard scripts
             if (TxType != TxOutType.TX_NONSTANDARD)
             {
                 ParsedScript = ParseScript(ScriptBytes);
             }
+
+            return ret;
         }
 
         public bool IsPayToScriptHash()

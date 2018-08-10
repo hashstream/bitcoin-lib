@@ -18,117 +18,107 @@ namespace hashstream.bitcoin_lib.BlockChain
         public VarInt TxOutCount { get; set; }
         public TxOut[] TxOut { get; set; }
         public UInt32 LockTime { get; set; }
-        public int Size { get; private set; }
 
-        public void ReadFromPayload(byte[] data, int offset)
+        public bool AllowWitness => (CURRENT_VERSION & SERIALIZE_TRANSACTION_NO_WITNESS) == 0;
+
+        public int Size => (Flags != 0 ? 10 : 8) + TxInCount.Size + TxIn.Sum(a => ((Flags & 1) == 1 && AllowWitness ? a.NetworkSize : a.Size)) + TxOutCount.Size + TxOut.Sum(a => a.Size);
+
+        public int ReadFromPayload(byte[] data, int offset)
         {
-            var allowWitness = (CURRENT_VERSION & SERIALIZE_TRANSACTION_NO_WITNESS) == 0;
-            var readoffset = offset;
+            var roffset = offset;
 
-            Size = 8;
-            Version = BitConverter.ToInt32(data, readoffset);
-            readoffset += 4;
+            Version = data.ReadInt32FromBuffer(ref roffset);
 
-            //check for extended version
-            var extended = data[readoffset] == 0 && data[readoffset + 1] != 0 && allowWitness;
+            //check for extended version (empty txin length)
+            var extended = data[roffset] == 0 && data[roffset + 1] != 0 && AllowWitness;
             if (extended)
             {
-                Flags = data[readoffset + 1];
-                readoffset += 2;
-                Size += 2;
+                Flags = data[roffset + 1];
+                roffset += 2;
             }
 
-            TxInCount = new VarInt(0);
-            TxInCount.ReadFromPayload(data, readoffset);
-
-            Size += TxInCount.Size;
-            readoffset += TxInCount.Size;
-
+            TxInCount = data.ReadFromBuffer<VarInt>(ref roffset);
+            
             TxIn = new TxIn[TxInCount];
             for (var x = 0; x < TxInCount; x++)
             {
-                var tx = new TxIn();
-                tx.ReadFromPayload(data, readoffset);
-
-                TxIn[x] = tx;
-
-                readoffset += tx.Size;
-                Size += tx.Size;
+                TxIn[x] = data.ReadFromBuffer<TxIn>(ref roffset);
             }
 
-            TxOutCount = new VarInt(0);
-            TxOutCount.ReadFromPayload(data, readoffset);
-
-            Size += TxOutCount.Size;
-            readoffset += TxOutCount.Size;
+            TxOutCount = data.ReadFromBuffer<VarInt>(ref roffset);
 
             TxOut = new TxOut[TxOutCount];
             for (var x = 0; x < TxOutCount; x++)
             {
-                var tx = new TxOut();
-                tx.ReadFromPayload(data, readoffset);
-
-                TxOut[x] = tx;
-
-                readoffset += tx.Size;
-                Size += tx.Size;
+                TxOut[x] = data.ReadFromBuffer<TxOut>(ref roffset);
             }
 
             //read witness scripts
-            if((Flags & 1) == 1 && allowWitness)
+            if((Flags & 1) == 1 && AllowWitness)
             {
-                Flags ^= 1;
                 foreach(var tx in TxIn)
                 {
-                    //read the len
-                    tx.WitnessScripts = new WitnessScript();
-                    tx.WitnessScripts.ReadFromPayload(data, readoffset);
-
-                    readoffset += tx.WitnessScripts.TotalLength;
-                    Size += tx.WitnessScripts.TotalLength;
+                    tx.WitnessScripts = data.ReadFromBuffer<WitnessScript>(ref roffset);
                 }
             }
 
-            LockTime = BitConverter.ToUInt32(data, readoffset);
+            LockTime = BitConverter.ToUInt32(data, roffset);
+
+            return Size;
         }
 
         public byte[] ToArray()
         {
-            //ew
-            var tis = TxIn.Sum(a => a.Size);
-            var tos = TxOut.Sum(a => a.Size);
+            Flags |= AllowWitness && HasWitness() ? (byte)1 : (byte)0;
 
-            var ret = new byte[8 + tis + tos + TxInCount.Size + TxOutCount.Size];
+            var woffset = 0;
+            var ret = new byte[Size];
 
-            var v = BitConverter.GetBytes(Version);
-            Array.Copy(v, 0, ret, 0, v.Length);
+            ret.CopyAndIncr(BitConverter.GetBytes(Version), ref woffset);
 
-            var ti = TxInCount.ToArray();
-            Array.Copy(ti, 0, ret, 4, ti.Length);
-
-            var txInOffset = 4 + ti.Length;
-            for(var x = 0; x < TxInCount; x++)
+            //use extended block format
+            if (Flags != 0)
             {
-                var tx = TxIn[x].ToArray();
-                Array.Copy(tx, 0, ret, txInOffset, tx.Length);
-                txInOffset += tx.Length;
+                ret.CopyAndIncr(new byte[] { 0x00, Flags }, ref woffset);
             }
 
-            var to = TxOutCount.ToArray();
-            Array.Copy(to, 0, ret, txInOffset, to.Length);
-
-            var txOutOffset = txInOffset + to.Length;
-            for(var x = 0; x < TxOutCount; x++)
+            ret.CopyAndIncr(TxInCount.ToArray(), ref woffset);
+            
+            foreach(var tin in TxIn)
             {
-                var tx = TxOut[x].ToArray();
-                Array.Copy(tx, 0, ret, txOutOffset, tx.Length);
-                txOutOffset += tx.Length;
+                ret.CopyAndIncr(tin.ToArray(), ref woffset);
             }
 
-            var lt = BitConverter.GetBytes(LockTime);
-            Array.Copy(lt, 0, ret, txOutOffset, lt.Length);
+            ret.CopyAndIncr(TxOutCount.ToArray(), ref woffset);
+
+            foreach(var tout in TxOut)
+            {
+                ret.CopyAndIncr(tout.ToArray(), ref woffset);
+            }
+
+            //serialize witness scripts
+            if((Flags & 1) == 1 && AllowWitness)
+            {
+                foreach(var tin in TxIn)
+                {
+                    var s = tin.WitnessScripts ?? new WitnessScript();
+                    ret.CopyAndIncr(s.ToArray(), ref woffset);
+                }
+            }
+
+            ret.CopyAndIncr(BitConverter.GetBytes(LockTime), ref woffset);
 
             return ret;
+        }
+
+        public Hash GetTxHash()
+        {
+            return new Hash(ToArray().SHA256d());
+        }
+
+        public bool HasWitness()
+        {
+            return TxIn.Any(a => a.WitnessScripts != null);
         }
     }
 }

@@ -1,7 +1,9 @@
 ﻿using hashstream.bitcoin_lib.Crypto;
+using hashstream.bitcoin_lib.P2P;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 
@@ -100,6 +102,90 @@ namespace hashstream.bitcoin_lib
         public static byte[] Hash160(this byte[] data)
         {
             return data.SHA256().RIPEMD160();
+        }
+
+        public static void CopyAndIncr(this byte[] dest, byte[] src, ref int offset)
+        {
+            Array.Copy(src, 0, dest, offset, src.Length);
+            offset += src.Length;
+        }
+
+        public static void CopyAndIncr(this byte[] dest, byte[] src, int offset)
+        {
+            Array.Copy(src, 0, dest, offset, src.Length);
+        }
+
+        public static T ReadFromBuffer<T>(this byte[] src, ref int offset) where T : IStreamable, new()
+        {
+            var ret = new T();
+            offset += ret.ReadFromPayload(src, offset);
+
+            return ret;
+        }
+
+        public static UInt16 ReadUInt16FromBuffer(this byte[] src, ref int offset)
+        {
+            var ret = BitConverter.ToUInt16(src, offset);
+            offset += 2;
+
+            return ret;
+        }
+
+        public static UInt32 ReadUInt32FromBuffer(this byte[] src, ref int offset)
+        {
+            var ret = BitConverter.ToUInt32(src, offset);
+            offset += 4;
+
+            return ret;
+        }
+
+        public static UInt64 ReadUInt64FromBuffer(this byte[] src, ref int offset)
+        {
+            var ret = BitConverter.ToUInt64(src, offset);
+            offset += 8;
+
+            return ret;
+        }
+
+        public static Int16 ReadInt16FromBuffer(this byte[] src, ref int offset)
+        {
+            var ret = BitConverter.ToInt16(src, offset);
+            offset += 2;
+
+            return ret;
+        }
+
+        public static Int32 ReadInt32FromBuffer(this byte[] src, ref int offset)
+        {
+            var ret = BitConverter.ToInt32(src, offset);
+            offset += 4;
+
+            return ret;
+        }
+
+        public static Int64 ReadInt64FromBuffer(this byte[] src, ref int offset)
+        {
+            var ret = BitConverter.ToInt64(src, offset);
+            offset += 8;
+
+            return ret;
+        }
+
+        public static IPAddress ReadIPAddressFromBuffer(this byte[] src, ref int offset)
+        {
+            var ip = new byte[16];
+            Array.Copy(src, offset, ip, 0, 16);
+            offset += 16;
+
+            return new IPAddress(ip);
+        }
+
+        public static string ReadASCIIFromBuffer(this byte[] src, ref int offset, int len)
+        {
+            var ret = System.Text.Encoding.ASCII.GetString(src, offset, len);
+            offset += len;
+
+            return ret;
         }
     }
 }

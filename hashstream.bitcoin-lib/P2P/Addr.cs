@@ -12,37 +12,32 @@ namespace hashstream.bitcoin_lib.P2P
 
         public string Command => "addr";
 
-        public void ReadFromPayload(byte[] data, int offset)
-        {
-            IpCount = new VarInt(0);
-            IpCount.ReadFromPayload(data, offset);
+        public int Size => IpCount.Size + (IP.Size * IpCount);
 
-            var ipOffset = offset + IpCount.Size;
+        public int ReadFromPayload(byte[] data, int offset)
+        {
+            var roffset = offset;
+            IpCount = data.ReadFromBuffer<VarInt>(ref roffset);
+
             Ips = new IP[IpCount];
             for (var x = 0; x < IpCount; x++)
             {
-                var ip = new IP();
-                ip.ReadFromPayload(data, ipOffset);
-                Ips[x] = ip;
-                ipOffset += ip.Size;
+                Ips[x] = data.ReadFromBuffer<IP>(ref roffset);
             }
+
+            return Size;
         }
 
         public byte[] ToArray()
         {
-            //ew
-            var ix = IpCount * 30;
-            var ret = new byte[ix + IpCount.Size];
+            var woffset = 0;
+            var ret = new byte[IpCount * 30 + IpCount.Size];
 
-            var ic = IpCount.ToArray();
-            Array.Copy(ic, 0, ret, 0, ic.Length);
-
-            var ipOffset = ic.Length;
-            for (var x = 0; x < IpCount; x++)
+            ret.CopyAndIncr(IpCount.ToArray(), ref woffset);
+            
+            foreach(var ip in Ips)
             {
-                var ip = Ips[x].ToArray();
-                Array.Copy(ret, 0, ret, ipOffset, ip.Length);
-                ipOffset += ip.Length;
+                ret.CopyAndIncr(ip.ToArray(), ref woffset);
             }
 
             return ret;

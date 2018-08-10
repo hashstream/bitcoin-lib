@@ -24,6 +24,12 @@ namespace hashstream.bitcoin_lib.P2P
         public UInt32 StartHeight { get; set; }
         public bool Relay { get; set; }
 
+        public int Size => 85 + UserAgentLength.Size + UserAgentLength;
+
+        public Version()
+        {
+
+        }
 
         public Version(string ua)
         {
@@ -31,82 +37,50 @@ namespace hashstream.bitcoin_lib.P2P
             UserAgentLength = ua.Length;
         }
 
-        public void ReadFromPayload(byte[] data, int offset)
+        public int ReadFromPayload(byte[] data, int offset)
         {
-            HighestVersion = BitConverter.ToUInt32(data, offset);
-            Services = BitConverter.ToUInt64(data, offset + 4);
-            Timestamp = BitConverter.ToUInt64(data, offset + 12);
+            var roffset = offset;
 
-            RecvServices = BitConverter.ToUInt64(data, offset + 20);
-            var rip = new byte[16];
-            Array.Copy(data, offset + 28, rip, 0, 16);
-            RecvIp = new IPAddress(rip);
-            RecvPort = BitConverter.ToUInt16(data, offset + 44);
+            HighestVersion = data.ReadUInt32FromBuffer(ref roffset);
+            Services = data.ReadUInt64FromBuffer(ref roffset);
+            Timestamp = data.ReadUInt64FromBuffer(ref roffset);
+            RecvServices = data.ReadUInt64FromBuffer(ref roffset);
+            RecvIp = data.ReadIPAddressFromBuffer(ref roffset);
+            RecvPort = data.ReadUInt16FromBuffer(ref roffset);
+            TransServices = data.ReadUInt64FromBuffer(ref roffset);
+            TransIp = data.ReadIPAddressFromBuffer(ref roffset);
+            TransPort = data.ReadUInt16FromBuffer(ref roffset);
+            Nonce = data.ReadUInt64FromBuffer(ref roffset);
+            UserAgentLength = data.ReadFromBuffer<VarInt>(ref roffset);
+            UserAgent = data.ReadASCIIFromBuffer(ref roffset, UserAgentLength);
+            StartHeight = data.ReadUInt32FromBuffer(ref roffset);
+            Relay = BitConverter.ToBoolean(data, roffset);
 
-            TransServices = BitConverter.ToUInt64(data, offset + 46);
-            var tip = new byte[16];
-            Array.Copy(data, offset + 54, tip, 0, 16);
-            TransIp = new IPAddress(tip);
-            TransPort = BitConverter.ToUInt16(data, offset + 70);
-
-            Nonce = BitConverter.ToUInt64(data, offset + 72);
-            UserAgentLength = new VarInt(0);
-            UserAgentLength.ReadFromPayload(data, offset + 80);
-
-            var noffset = offset + 80 + UserAgentLength.Size;
-            UserAgent = System.Text.Encoding.ASCII.GetString(data, noffset, UserAgentLength);
-            StartHeight = BitConverter.ToUInt32(data, noffset + UserAgentLength);
-            Relay = BitConverter.ToBoolean(data, noffset + UserAgentLength + 4);
+            return Size;
         }
 
         public byte[] ToArray()
         {
-            var pl = new byte[85 + UserAgentLength.Size + UserAgentLength];
+            var woffset = 0;
+            var ret = new byte[Size];
+            
+            ret.CopyAndIncr(BitConverter.GetBytes(HighestVersion), ref woffset);
+            ret.CopyAndIncr(BitConverter.GetBytes(Services), ref woffset);
+            ret.CopyAndIncr(BitConverter.GetBytes(Timestamp), ref woffset);
+            ret.CopyAndIncr(BitConverter.GetBytes(RecvServices), ref woffset);
+            ret.CopyAndIncr(RecvIp.GetAddressBytes(), ref woffset);
+            ret.CopyAndIncr(BitConverter.GetBytes(RecvPort), ref woffset);
+            ret.CopyAndIncr(BitConverter.GetBytes(TransServices), ref woffset);
+            ret.CopyAndIncr(TransIp.GetAddressBytes(), ref woffset);
+            ret.CopyAndIncr(BitConverter.GetBytes(TransPort), ref woffset);
+            ret.CopyAndIncr(BitConverter.GetBytes(Nonce), ref woffset);
+            ret.CopyAndIncr(UserAgentLength.ToArray(), ref woffset);
+            ret.CopyAndIncr(System.Text.Encoding.ASCII.GetBytes(UserAgent), ref woffset);
+            ret.CopyAndIncr(BitConverter.GetBytes(StartHeight), ref woffset);
 
-            var hv = BitConverter.GetBytes(HighestVersion);
-            Array.Copy(hv, 0, pl, 0, hv.Length);
+            ret[woffset] = Relay ? (byte)0x01 : (byte)0x00;
 
-            var sv = BitConverter.GetBytes(Services);
-            Array.Copy(sv, 0, pl, 4, sv.Length);
-
-            var ts = BitConverter.GetBytes(Timestamp);
-            Array.Copy(ts, 0, pl, 12, ts.Length);
-
-            var rs = BitConverter.GetBytes(RecvServices);
-            Array.Copy(rs, 0, pl, 20, rs.Length);
-
-            var ri = RecvIp.GetAddressBytes();
-            Array.Copy(ri, 0, pl, 28, ri.Length);
-
-            var rp = BitConverter.GetBytes(RecvPort);
-            Array.Reverse(rp);
-            Array.Copy(rp, 0, pl, 44, rp.Length);
-
-            var tss = BitConverter.GetBytes(TransServices);
-            Array.Copy(tss, 0, pl, 46, tss.Length);
-
-            var ti = TransIp.GetAddressBytes();
-            Array.Copy(ti, 0, pl, 54, ti.Length);
-
-            var tp = BitConverter.GetBytes(TransPort);
-            Array.Reverse(tp);
-            Array.Copy(tp, 0, pl, 70, tp.Length);
-
-            var nn = BitConverter.GetBytes(Nonce);
-            Array.Copy(nn, 0, pl, 72, nn.Length);
-
-            var ul = UserAgentLength.ToArray();
-            Array.Copy(ul, 0, pl, 80, ul.Length);
-
-            var ua = System.Text.Encoding.ASCII.GetBytes(UserAgent);
-            Array.Copy(ua, 0, pl, 80 + UserAgentLength.Size, ua.Length);
-
-            var sh = BitConverter.GetBytes(StartHeight);
-            Array.Copy(sh, 0, pl, 80 + UserAgentLength.Size + UserAgentLength, sh.Length);
-
-            pl[pl.Length-1] = Relay ? (byte)0x01 : (byte)0x00;
-
-            return pl;
+            return ret;
         }
     }
 }

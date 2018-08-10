@@ -15,20 +15,24 @@ namespace hashstream.bitcoin_lib.P2P
         public InventoryType Type { get; set; }
         public Hash Hash { get; set; }
 
-        public void ReadFromPayload(byte[] data, int offset)
-        {
-            Type = (InventoryType)BitConverter.ToUInt32(data, offset);
+        public static int Size => 4 + Hash.Size;
 
-            Hash = new Hash();
-            Hash.ReadFromPayload(data, offset + 4);
+        public int ReadFromPayload(byte[] data, int offset)
+        {
+            var roffset = offset;
+
+            Type = (InventoryType)data.ReadUInt32FromBuffer(ref roffset);
+            Hash = data.ReadFromBuffer<Hash>(ref roffset);
+
+            return Size;
         }
 
         public byte[] ToArray()
         {
-            var t = BitConverter.GetBytes((UInt32)Type);
-            var ret = new byte[Hash.HashBytes.Length + t.Length];
-            Array.Copy(t, 0, ret, 0, t.Length);
-            Array.Copy(Hash.HashBytes, 0, ret, t.Length, Hash.HashBytes.Length);
+            var ret = new byte[Size];
+
+            ret.CopyAndIncr(BitConverter.GetBytes((UInt32)Type), 0);
+            ret.CopyAndIncr(Hash.ToArray(), 4);
 
             return ret;
         }

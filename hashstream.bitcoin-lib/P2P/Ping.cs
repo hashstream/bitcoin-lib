@@ -10,9 +10,13 @@ namespace hashstream.bitcoin_lib.P2P
 
         public string Command => "ping";
 
-        public void ReadFromPayload(byte[] data, int offset)
+        public static int Size = 8;
+
+        public int ReadFromPayload(byte[] data, int offset)
         {
             Nonce = BitConverter.ToUInt64(data, offset);
+
+            return Size;
         }
 
         public byte[] ToArray()

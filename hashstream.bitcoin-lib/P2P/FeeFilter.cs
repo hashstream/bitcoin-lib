@@ -10,9 +10,14 @@ namespace hashstream.bitcoin_lib.P2P
 
         public string Command => "feefilter";
 
-        public void ReadFromPayload(byte[] data, int offset)
+        public static int Size => 8;
+
+        public int ReadFromPayload(byte[] data, int offset)
         {
-            FeeRate = BitConverter.ToUInt64(data, offset);
+            var roffset = offset;
+            FeeRate = data.ReadUInt64FromBuffer(ref roffset);
+
+            return Size;
         }
 
         public byte[] ToArray()

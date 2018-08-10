@@ -11,12 +11,13 @@ namespace hashstream.bitcoin_lib.BlockChain
 
         public int Size => 8 + RedeemScript.Size;
 
-        public void ReadFromPayload(byte[] data, int offset)
+        public int ReadFromPayload(byte[] data, int offset)
         {
-            Value = BitConverter.ToUInt64(data, offset);
+            var roffset = offset;
+            Value = data.ReadUInt64FromBuffer(ref roffset);
+            RedeemScript = data.ReadFromBuffer<StandardScript>(ref roffset);
 
-            RedeemScript = new StandardScript();
-            RedeemScript.ReadFromPayload(data, offset + 8);
+            return Size;
         }
 
         public Address GetAddress()
@@ -26,13 +27,11 @@ namespace hashstream.bitcoin_lib.BlockChain
 
         public byte[] ToArray()
         {
+            var woffset = 0;
             var ret = new byte[Size];
 
-            var v = BitConverter.GetBytes(Value);
-            Array.Copy(v, 0, ret, 0, v.Length);
-
-            var sc = RedeemScript.ToArray();
-            Array.Copy(sc, 0, ret, 8, sc.Length);
+            ret.CopyAndIncr(BitConverter.GetBytes(Value), ref woffset);
+            ret.CopyAndIncr(RedeemScript.ToArray(), woffset);
 
             return ret;
         }

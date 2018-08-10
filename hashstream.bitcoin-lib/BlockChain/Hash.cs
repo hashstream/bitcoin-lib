@@ -8,9 +8,11 @@ namespace hashstream.bitcoin_lib.BlockChain
 {
     public class Hash : IStreamable
     {
-        public byte[] HashBytes { get; set; }
+        private byte[] HashBytes { get; set; }
 
-        public int Size => 32;
+        public byte[] NetworkHashBytes => HashBytes.Reverse().ToArray();
+
+        public static int Size => 32;
 
         public Hash()
         {
@@ -29,11 +31,7 @@ namespace hashstream.bitcoin_lib.BlockChain
                 throw new Exception($"Invalid hash length {h.Length} != {Size}");
             }
 
-            HashBytes = h;
-            if (BitConverter.IsLittleEndian)
-            {
-                HashBytes = HashBytes.Reverse().ToArray();
-            }
+            HashBytes = h.Reverse().ToArray();
         }
 
         public Hash(string h)
@@ -51,15 +49,17 @@ namespace hashstream.bitcoin_lib.BlockChain
             return BitConverter.ToString(HashBytes).Replace("-", string.Empty).ToLower();
         }
 
-        public void ReadFromPayload(byte[] data, int offset)
+        public int ReadFromPayload(byte[] data, int offset)
         {
             Array.Copy(data, offset, HashBytes, 0, HashBytes.Length);
             HashBytes = HashBytes.Reverse().ToArray();
+
+            return Size;
         }
 
         public byte[] ToArray()
         {
-            return HashBytes;
+            return NetworkHashBytes;
         }
 
         public static implicit operator Hash(byte[] b)

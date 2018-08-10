@@ -8,9 +8,9 @@ namespace hashstream.bitcoin_lib.P2P
     {
         public string Command => "mempool";
 
-        public void ReadFromPayload(byte[] data, int offset)
+        public int ReadFromPayload(byte[] data, int offset)
         {
-
+            return 0;
         }
 
         public byte[] ToArray()

@@ -1,5 +1,6 @@
 ﻿using hashstream.bitcoin_lib.P2P;
 using System;
+using System.Linq;
 
 namespace hashstream.bitcoin_lib.BlockChain
 {
@@ -9,39 +10,50 @@ namespace hashstream.bitcoin_lib.BlockChain
         public VarInt TxnCount { get; set; }
         public Tx[] Txns { get; set; }
 
+        public int Size => BlockHeader.Size + TxnCount.Size + Txns.Sum(a => a.Size);
+
         public Block() { }
 
         public Block(BlockHeader h) { Header = h; }
 
-        public void ReadFromPayload(byte[] data, int offset)
+        public int ReadFromPayload(byte[] data, int offset)
         {
-            var roffset = 0;
+            var roffset = offset;
             if (Header == null)
             {
-                Header = new BlockHeader();
-                Header.ReadFromPayload(data, roffset);
-                roffset += Header.Size;
+                Header = data.ReadFromBuffer<BlockHeader>(ref roffset);
             }
 
-            TxnCount = new VarInt(0);
-            TxnCount.ReadFromPayload(data, roffset);
-            roffset += TxnCount.Size;
-            
+            TxnCount = data.ReadFromBuffer<VarInt>(ref roffset);
+
             Txns = new Tx[TxnCount];
             for(var x = 0; x < Txns.Length; x++)
             {
-                var txn = new Tx();
-                txn.ReadFromPayload(data, roffset);
-
-                Txns[x] = txn;
-
-                roffset += txn.Size;
+                Txns[x] = data.ReadFromBuffer<Tx>(ref roffset);
             }
+
+            return Size;
         }
 
         public byte[] ToArray()
         {
-            throw new NotImplementedException();
+            var woffset = 0;
+            var ret = new byte[Size];
+
+            ret.CopyAndIncr(Header.ToArray(), ref woffset);
+            ret.CopyAndIncr(TxnCount.ToArray(), ref woffset);
+
+            foreach(var tx in Txns)
+            {
+                ret.CopyAndIncr(tx.ToArray(), ref woffset);
+            }
+
+            return ret;
+        }
+
+        public Hash GetBlockHash()
+        {
+            return Header.GetBlockHeaderHash();
         }
     }
 }
