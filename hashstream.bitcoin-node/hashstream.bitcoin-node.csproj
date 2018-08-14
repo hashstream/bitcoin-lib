@@ -5,6 +5,11 @@
     <AssemblyName>hashstream.bitcoin-node</AssemblyName>
     <RootNamespace>hashstream.bitcoin_node</RootNamespace>
     <Platforms>AnyCPU;x64</Platforms>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Company>Hashstream</Company>
+    <Product>Hashstream Bitcoin Node Lib</Product>
+    <Authors>Hashstream</Authors>
+    <Description>Hashstream Bitcoin Node Lib</Description>
   </PropertyGroup>
 
   <ItemGroup>
