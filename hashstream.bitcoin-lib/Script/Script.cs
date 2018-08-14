@@ -1,9 +1,14 @@
 ﻿using hashstream.bitcoin_lib.BlockChain;
-using hashstream.bitcoin_lib.Crypto;
 using hashstream.bitcoin_lib.P2P;
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
+
+#if NETCOREAPP2_1 || NETCOREAPP2_0
+using RIPMD160Mgd = hashstream.bitcoin_lib.Crypto.RIPEMD160Managed;
+#else 
+using RIPMD160Mgd = System.Security.Cryptography.RIPEMD160Managed;
+#endif
 
 namespace hashstream.bitcoin_lib.Script
 {
@@ -471,7 +476,7 @@ namespace hashstream.bitcoin_lib.Script
                         case OpCode.OP_RIPEMD160:
                             {
                                 var data = stack.Pop();
-                                using (var cx = new RIPEMD160Managed())
+                                using (var cx = new RIPMD160Mgd())
                                 {
                                     var hash = cx.ComputeHash(data);
                                     stack.Push(hash);
@@ -504,7 +509,7 @@ namespace hashstream.bitcoin_lib.Script
                                 using (var cx = new SHA256Managed())
                                 {
                                     var hash = cx.ComputeHash(data);
-                                    using (var cx2 = new RIPEMD160Managed())
+                                    using (var cx2 = new RIPMD160Mgd())
                                     {
                                         var hash2 = cx.ComputeHash(hash);
                                         stack.Push(hash2);

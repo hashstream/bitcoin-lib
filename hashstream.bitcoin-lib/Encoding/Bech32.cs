@@ -77,7 +77,7 @@ namespace hashstream.bitcoin_lib.Encoding
 
             if (ds.Length < 6 || ds.IndexOfAny(ExcludedDataChars) >= 0)
             {
-                throw new Exception($"Invalid bech32 string, data must be greater than 6 chars long and not contain any of the following [{string.Join(',', ExcludedDataChars)}]");
+                throw new Exception($"Invalid bech32 string, data must be greater than 6 chars long and not contain any of the following [{string.Join(",", ExcludedDataChars)}]");
             }
 
             var data = Bech32DecodeString(ds);

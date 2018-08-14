@@ -199,7 +199,16 @@ namespace hashstream.nodes
             try
             {
                 var ns = new Socket(SocketType.Stream, ProtocolType.Tcp);
+#if NET461
+                var sem_conn_net461 = new SemaphoreSlim(1);
+                var sca = new SocketAsyncEventArgs();
+                if (ns.ConnectAsync(sca))
+                {
+                    await sem_conn_net461.WaitAsync();
+                }
+#else
                 await ns.ConnectAsync(IP);
+#endif
                 Peer = new BitcoinPeer(ns);
                 Peer.OnVerAck += P_OnVerAck;
                 Peer.OnVersion += P_OnVersion;

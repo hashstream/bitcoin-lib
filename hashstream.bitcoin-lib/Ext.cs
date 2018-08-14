@@ -1,12 +1,16 @@
-﻿using hashstream.bitcoin_lib.Crypto;
-using hashstream.bitcoin_lib.P2P;
+﻿using hashstream.bitcoin_lib.P2P;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
+
+#if NETCOREAPP2_1 || NETCOREAPP2_0
+using RIPMD160Mgd = hashstream.bitcoin_lib.Crypto.RIPEMD160Managed;
+#else 
+using RIPMD160Mgd = System.Security.Cryptography.RIPEMD160Managed;
+#endif
 
 namespace hashstream.bitcoin_lib
 {
@@ -96,7 +100,7 @@ namespace hashstream.bitcoin_lib
 
         public static byte[] RIPEMD160(this byte[] data)
         {
-            using(var rmd = new RIPEMD160Managed())
+            using(var rmd = new RIPMD160Mgd())
             {
                 return rmd.ComputeHash(data);
             }

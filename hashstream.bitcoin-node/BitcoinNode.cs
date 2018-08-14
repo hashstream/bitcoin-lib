@@ -60,9 +60,31 @@ namespace hashstream.bitcoin_node_lib
 
         private async Task Accept()
         {
+#if NET461
+            var sem_net461 = new SemaphoreSlim(1);
+#endif
             while (!Cts.IsCancellationRequested)
             {
+#if NET461
+                Socket ns = null;
+                var saa = new SocketAsyncEventArgs();
+                saa.Completed += (s, e) => 
+                {
+                    ns = e.AcceptSocket;
+                    sem_net461.Release();
+                };
+
+                if (!Sock.AcceptAsync(saa))
+                {
+                    ns = saa.AcceptSocket;
+                }
+                else
+                {
+                    await sem_net461.WaitAsync();
+                }
+#else
                 var ns = await Sock.AcceptAsync();
+#endif
                 if (ns != null)
                 {
                     var id = Guid.NewGuid();

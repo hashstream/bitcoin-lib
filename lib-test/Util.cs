@@ -7,6 +7,7 @@ using System.Text;
 
 namespace lib_test
 {
+#if WITH_LIVE_TEST_TEST
     static class Util
     {
         public static byte[] GetBlock(string hash)
@@ -60,4 +61,5 @@ namespace lib_test
             return ret;
         }
     }
+#endif
 }

@@ -3,7 +3,7 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 
-namespace hashstream.bitcoin_node_test
+namespace hashstream.bitcoin_example_node
 {
     class Program
     {
