@@ -258,7 +258,14 @@ namespace lib_test
                 Assert.Equal(t.Value, res);
             }
         }
+        
+        [Fact]
+        public void Script_Bitcoin_Tests()
+        {
+            //https://raw.githubusercontent.com/bitcoin/bitcoin/master/src/test/data/tx_valid.json
+        }
 
+#if WITH_LIVE_TEST_TEST
         [Fact]
         public void Block_Parse_Sample()
         {
@@ -270,13 +277,6 @@ namespace lib_test
             Assert.Equal("00000000000000000008c45cfa71c551cc3437d08f989e094e87096370cb5ebc", bt.Hash.ToString());
         }
 
-        [Fact]
-        public void Script_Bitcoin_Tests()
-        {
-            //https://raw.githubusercontent.com/bitcoin/bitcoin/master/src/test/data/tx_valid.json
-        }
-
-#if WITH_LIVE_TEST_TEST
         [Fact]
         public void Parse_Last_100_Blocks()
         {

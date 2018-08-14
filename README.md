@@ -1,5 +1,6 @@
 # bitcoin-lib
 Bitcoin P2P Implementation in C# 
+[![hashstream MyGet Build Status](https://www.myget.org/BuildSource/Badge/hashstream?identifier=4d8df35b-5c6d-4763-9ec9-d59fbf211b43)](https://www.myget.org/)
 
 Generally speaking, anything on Consensus or API/RPC layer is not implemented yet.
 The main purpose of this lib is for parsing and serializing data for the P2P network.

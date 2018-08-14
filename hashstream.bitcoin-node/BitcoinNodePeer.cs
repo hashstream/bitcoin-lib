@@ -9,7 +9,9 @@ namespace hashstream.bitcoin_node_lib
     {
         private Guid Id { get; set; }
         private BitcoinPeer Peer { get; set; }
-        
+
+        public async Task WriteMessage<T>(T msg) where T : IStreamable, ICommand => await Peer.WriteMessage(msg);
+
         public BitcoinNodePeer(BitcoinPeer p, Guid id)
         {
             Id = id;
@@ -39,13 +41,8 @@ namespace hashstream.bitcoin_node_lib
             Peer.Start();
         }
 
-        public async Task SendVersion(BitcoinPeer s = null)
+        public async Task SendVersion()
         {
-            if(s == null)
-            {
-                s = Peer;
-            }
-
             //Send version
             var v = new bitcoin_lib.P2P.Version(BitcoinNode.UserAgent);
             var nd = new byte[9];
@@ -61,21 +58,21 @@ namespace hashstream.bitcoin_node_lib
             v.TransPort = 0;
             v.TransServices = (UInt64)Services.NODE_NETWORK;
 
-            await s.WriteMessage(v);
+            await WriteMessage(v);
         }
 
-        public async Task SendAddr(BitcoinPeer s)
+        public async Task SendAddr()
         {
             var a = new Addr();
 
-            await s.WriteMessage(a);
+            await WriteMessage(a);
         }
 
         private async Task Peer_OnVersion(BitcoinPeer s, bitcoin_lib.P2P.Version v)
         {
             if (Peer.IsInbound)
             {
-                await SendVersion(s);
+                await SendVersion();
             }
 
             var va = new VerAck();
@@ -88,7 +85,7 @@ namespace hashstream.bitcoin_node_lib
         {
             if (Peer.IsInbound)
             {
-                await SendAddr(s);
+                await SendAddr();
             }
 
             await s.WriteMessage(new Ping());
