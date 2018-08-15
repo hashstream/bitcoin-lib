@@ -303,7 +303,11 @@ namespace hashstream.nodes
             var rv = await db.HashGetAsync($"hs:nodes:detail:{IP.ToString()}", "version");
             if (rv.HasValue)
             {
+#if NETCOREAPP2_1
+                ret.ReadFromPayload(((byte[])rv).AsSpan());
+#else
                 ret.ReadFromPayload(rv, 0);
+#endif
             }
 
             return ret;

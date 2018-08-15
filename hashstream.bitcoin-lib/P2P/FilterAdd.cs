@@ -5,20 +5,44 @@ namespace hashstream.bitcoin_lib.P2P
 {
     public class FilterAdd : IStreamable, ICommand
     {
-        public VarInt ElementCount { get; set; }
-        public byte[] Elements { get; set; }
+        public VarInt ElementCount => Elements?.Length;
+        public byte[] Elements { get; set; } = new byte[0];
 
         public string Command => "filteradd";
 
         public int Size => ElementCount.Size + ElementCount;
+        
+#if NETCOREAPP2_1
+        public ReadOnlySpan<byte> ReadFromPayload(ReadOnlySpan<byte> data)
+        {
+            var next = data.ReadAndSlice(out VarInt tElementCount)
+                .ReadAndSlice(tElementCount, out byte[] tElements);
 
+            Elements = tElements;
+
+            return next.Slice(tElementCount);
+        }
+
+        public Span<byte> WriteToPayload(Span<byte> dest)
+        {
+            return dest.WriteAndSlice(ElementCount)
+                 .WriteAndSlice(Elements);
+        }
+
+        public byte[] ToArray()
+        {
+            var ret = new byte[Size];
+            WriteToPayload(ret);
+            return ret;
+        }
+#else
         public int ReadFromPayload(byte[] data, int offset)
         {
             var roffset = offset;
-            ElementCount = data.ReadFromBuffer<VarInt>(ref roffset);
+            var ec = data.ReadFromBuffer<VarInt>(ref roffset);
 
-            Elements = new byte[ElementCount];
-            Array.Copy(data, roffset, Elements, 0, ElementCount);
+            Elements = new byte[ec];
+            Array.Copy(data, roffset, Elements, 0, ec);
 
             return Size;
         }
@@ -33,5 +57,6 @@ namespace hashstream.bitcoin_lib.P2P
 
             return ret;
         }
+#endif
     }
 }

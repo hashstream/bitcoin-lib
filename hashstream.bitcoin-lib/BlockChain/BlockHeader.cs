@@ -14,10 +14,49 @@ namespace hashstream.bitcoin_lib.BlockChain
         public UInt32 Target { get; set; }
         public UInt32 Nonce { get; set; }
 
-        public static int Size => 80;
+        public int Size => StaticSize;
+
+        public static int StaticSize => 80;
 
         public Hash Hash => new Hash(ToArray().SHA256d());
 
+#if NETCOREAPP2_1
+        public ReadOnlySpan<byte> ReadFromPayload(ReadOnlySpan<byte> data)
+        {
+            var next = data.ReadAndSlice(out UInt32 tVersion)
+                .ReadAndSlice(out Hash tPrevBlock)
+                .ReadAndSlice(out Hash tMerkleRoot)
+                .ReadAndSlice(out UInt32 tTime)
+                .ReadAndSlice(out UInt32 tTarget)
+                .ReadAndSlice(out UInt32 tNonce);
+
+            Version = tVersion;
+            PrevBlock = tPrevBlock;
+            MerkleRoot = tMerkleRoot;
+            Time = tTime;
+            Target = tTarget;
+            Nonce = tNonce;
+
+            return next;
+        }
+
+        public Span<byte> WriteToPayload(Span<byte> dest)
+        {
+            return dest.WriteAndSlice(Version)
+                .WriteAndSlice(PrevBlock)
+                .WriteAndSlice(MerkleRoot)
+                .WriteAndSlice(Time)
+                .WriteAndSlice(Target)
+                .WriteAndSlice(Nonce);
+        }
+
+        public byte[] ToArray()
+        {
+            var dest = new byte[Size];
+            WriteToPayload(dest);
+            return dest;
+        }
+#else
         public int ReadFromPayload(byte[] data, int offset)
         {
             var roffset = offset;
@@ -46,5 +85,7 @@ namespace hashstream.bitcoin_lib.BlockChain
 
             return ret;
         }
+
+#endif
     }
 }

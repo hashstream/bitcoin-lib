@@ -1,4 +1,5 @@
-﻿using hashstream.bitcoin_lib.BlockChain;
+﻿using hashstream.bitcoin_lib;
+using hashstream.bitcoin_lib.BlockChain;
 using hashstream.bitcoin_lib.P2P;
 using StackExchange.Redis;
 using System;
@@ -32,7 +33,11 @@ namespace hashstream.bitcoin_node_lib
             if(v != RedisValue.Null)
             {
                 var ret = new T();
+#if NETCOREAPP2_1
+                ret.ReadFromPayload(((byte[])v).AsSpan());
+#else
                 ret.ReadFromPayload(v, 0);
+#endif
 
                 return ret;
             }

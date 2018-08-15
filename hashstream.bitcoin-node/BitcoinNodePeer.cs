@@ -1,4 +1,5 @@
-﻿using hashstream.bitcoin_lib.P2P;
+﻿using hashstream.bitcoin_lib;
+using hashstream.bitcoin_lib.P2P;
 using System;
 using System.Net;
 using System.Threading.Tasks;
@@ -57,6 +58,7 @@ namespace hashstream.bitcoin_node_lib
             v.TransIp = IPAddress.None;
             v.TransPort = 0;
             v.TransServices = (UInt64)Services.NODE_NETWORK;
+            v.Relay = true;
 
             await WriteMessage(v);
         }

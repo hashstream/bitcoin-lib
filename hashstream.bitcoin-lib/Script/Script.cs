@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 
-#if NETCOREAPP2_1 || NETCOREAPP2_0
+#if NETCOREAPP2_1
 using RIPMD160Mgd = hashstream.bitcoin_lib.Crypto.RIPEMD160Managed;
 #else 
 using RIPMD160Mgd = System.Security.Cryptography.RIPEMD160Managed;
@@ -22,8 +22,8 @@ namespace hashstream.bitcoin_lib.Script
         public static int WITNESS_V0_SCRIPTHASH_SIZE => 32;
         public static int WITNESS_V0_KEYHASH_SIZE => 20;
 
-        public VarInt Length { get; set; }
-        public byte[] ScriptBytes { get; set; }
+        public VarInt Length => ScriptBytes?.Length;
+        public byte[] ScriptBytes { get; set; } = new byte[0];
         public ScriptFrame[] ParsedScript { get; set; }
 
         public int Size => Length + Length.Size;
@@ -36,7 +36,6 @@ namespace hashstream.bitcoin_lib.Script
         public Script(byte[] data, bool parse = true)
         {
             ScriptBytes = data;
-            Length = new VarInt((ulong)data.LongLength);
 
             if (parse)
             {
@@ -44,18 +43,43 @@ namespace hashstream.bitcoin_lib.Script
             }
         }
 
+#if NETCOREAPP2_1
+        public ReadOnlySpan<byte> ReadFromPayload(ReadOnlySpan<byte> data)
+        {
+            var next = data.ReadAndSlice(out VarInt tLength)
+                .ReadAndSlice(tLength, out byte[] tScript);
+
+            ScriptBytes = tScript;
+
+            return next;
+        }
+
+        public Span<byte> WriteToPayload(Span<byte> dest)
+        {
+            return dest.WriteAndSlice(Length)
+                 .WriteAndSlice(ScriptBytes);
+        }
+
+        public byte[] ToArray()
+        {
+            var ret = new byte[Size];
+            WriteToPayload(ret);
+            return ret;
+        }
+#else
         public int ReadFromPayload(byte[] data, int offset)
         {
             var roffset = offset;
-            Length = data.ReadFromBuffer<VarInt>(ref roffset);
+            var slen = data.ReadFromBuffer<VarInt>(ref roffset);
 
-            if(Length < 0 || Length > offset + Length.Size + data.Length || Length > MAX_SCRIPT_SIZE)
+            if(slen < 0 || slen > offset + slen.Size + data.Length || slen > MAX_SCRIPT_SIZE)
             {
                 throw new Exception($"Impossible script length {Length}");
             }
-            ScriptBytes = new byte[Length];
-            if (Length > 0)
+
+            if (slen > 0)
             {
+                ScriptBytes = new byte[slen];
                 Array.Copy(data, roffset, ScriptBytes, 0, ScriptBytes.Length);
             }
 
@@ -72,6 +96,7 @@ namespace hashstream.bitcoin_lib.Script
 
             return ret;
         }
+#endif
 
         public bool ValidateRedeemScript(Script scriptSig)
         {

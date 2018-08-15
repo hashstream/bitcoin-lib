@@ -7,30 +7,65 @@ namespace hashstream.bitcoin_lib.P2P
     {
         public BlockHeader BlockHeader { get; set; }
         public UInt32 Transactions { get; set; }
-        public VarInt HashCount { get; set; }
+        public VarInt HashCount => Hashes?.Length;
         public Hash[] Hashes { get; set; }
-        public VarInt FlagByteCount { get; set; }
+        public VarInt FlagBytes => Flags?.Length;
         public byte[] Flags { get; set; }
 
-        public int Size => BlockHeader.Size + 4 + HashCount.Size + (Hash.Size * HashCount) + FlagByteCount.Size + FlagByteCount;
+        public int Size => BlockHeader.StaticSize + 4 + HashCount.Size + (Hash.StaticSize * HashCount) + FlagBytes.Size + FlagBytes;
 
+#if NETCOREAPP2_1
+        public ReadOnlySpan<byte> ReadFromPayload(ReadOnlySpan<byte> data)
+        {
+            var next = data.ReadAndSlice(out BlockHeader tHeader)
+                .ReadAndSlice(out UInt32 tTransactions)
+                .ReadAndSlice(out VarInt tHashCount)
+                .ReadAndSlice(tHashCount, out Hash[] tHashes)
+                .ReadAndSlice(out VarInt tFlagBytes)
+                .ReadAndSlice(tFlagBytes, out byte[] tFlags);
+
+            BlockHeader = tHeader;
+            Transactions = tTransactions;
+            Hashes = tHashes;
+            Flags = tFlags;
+
+            return next;
+        }
+
+        public Span<byte> WriteToPayload(Span<byte> dest)
+        {
+            return dest.WriteAndSlice(BlockHeader)
+                .WriteAndSlice(Transactions)
+                .WriteAndSlice(HashCount)
+                .WriteAndSlice(Hashes)
+                .WriteAndSlice(FlagBytes)
+                .WriteAndSlice(Flags);
+        }
+
+        public byte[] ToArray()
+        {
+            var ret = new byte[Size];
+            WriteToPayload(ret);
+            return ret;
+        }
+#else
         public int ReadFromPayload(byte[] data, int offset)
         {
             var roffset = offset;
 
             BlockHeader = data.ReadFromBuffer<BlockHeader>(ref roffset);
             Transactions = data.ReadUInt32FromBuffer(ref roffset);
-            HashCount = data.ReadFromBuffer<VarInt>(ref roffset);
+            var hc = data.ReadFromBuffer<VarInt>(ref roffset);
 
-            Hashes = new Hash[HashCount];
-            for (var x = 0; x < HashCount; x++)
+            Hashes = new Hash[hc];
+            for (var x = 0; x < hc; x++)
             {
                 Hashes[x] = data.ReadFromBuffer<Hash>(ref roffset);
             }
 
-            FlagByteCount = data.ReadFromBuffer<VarInt>(ref roffset);
+            var fbc = data.ReadFromBuffer<VarInt>(ref roffset);
 
-            Flags = new byte[FlagByteCount];
+            Flags = new byte[fbc];
             Array.Copy(data, roffset, Flags, 0, Flags.Length);
 
             return Size;
@@ -50,11 +85,12 @@ namespace hashstream.bitcoin_lib.P2P
                 ret.CopyAndIncr(h.ToArray(), ref woffset);
             }
 
-            ret.CopyAndIncr(FlagByteCount.ToArray(), ref woffset);
+            ret.CopyAndIncr(FlagBytes.ToArray(), ref woffset);
             ret.CopyAndIncr(Flags, woffset);
 
             return ret;
 
         }
+#endif
     }
 }

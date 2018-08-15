@@ -10,8 +10,41 @@ namespace hashstream.bitcoin_lib.P2P
         public IPAddress Ip { get; set; }
         public UInt16 Port { get; set; }
 
-        public static int Size => 30;
+        public int Size => StaticSize;
 
+        public static int StaticSize => 30;
+
+#if NETCOREAPP2_1
+        public ReadOnlySpan<byte> ReadFromPayload(ReadOnlySpan<byte> data)
+        {
+            var next = data.ReadAndSlice(out UInt32 tTime)
+                .ReadAndSlice(out UInt64 tServices)
+                .ReadAndSlice(out IPAddress tIp)
+                .ReadAndSlice(out UInt16 tPort);
+
+            Time = tTime;
+            Services = tServices;
+            Ip = tIp;
+            Port = tPort;
+
+            return next;
+        }
+
+        public Span<byte> WriteToPayload(Span<byte> dest)
+        {
+            return dest.WriteAndSlice(Time)
+                 .WriteAndSlice(Services)
+                 .WriteAndSlice(Ip)
+                 .WriteAndSlice(Port);
+        }
+
+        public byte[] ToArray()
+        {
+            var ret = new byte[Size];
+            WriteToPayload(ret);
+            return ret;
+        }
+#else
         public int ReadFromPayload(byte[] data, int offset)
         {
             var roffset = offset;
@@ -41,5 +74,6 @@ namespace hashstream.bitcoin_lib.P2P
 
             return ret;
         }
+#endif
     }
 }

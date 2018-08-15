@@ -1,22 +1,35 @@
 ﻿using hashstream.bitcoin_lib.P2P;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace hashstream.bitcoin_lib.BlockChain
 {
     public class Hash : IStreamable
     {
-        private byte[] HashBytes { get; set; }
+        protected byte[] HashBytes { get; set; } = new byte[StaticSize];
 
+#if NETCOREAPP2_1
+        public Span<byte> NetworkHashBytes
+        {
+            get
+            {
+                var hb = new Span<byte>(new byte[Size]);
+                HashBytes.CopyTo(hb);
+                hb.Reverse();
+                return hb;
+            }
+        }
+#else
         public byte[] NetworkHashBytes => HashBytes.Reverse().ToArray();
+#endif
 
-        public static int Size => 32;
+        public int Size => StaticSize;
+
+        public static int StaticSize => 32;
 
         public Hash()
         {
-            HashBytes = new byte[Size];
+
         }
 
         public static Hash Empty()
@@ -31,7 +44,8 @@ namespace hashstream.bitcoin_lib.BlockChain
                 throw new Exception($"Invalid hash length {h.Length} != {Size}");
             }
 
-            HashBytes = h.Reverse().ToArray();
+            HashBytes = h;
+            Array.Reverse(HashBytes);
         }
 
         public Hash(string h)
@@ -42,13 +56,36 @@ namespace hashstream.bitcoin_lib.BlockChain
             }
 
             HashBytes = h.FromHex();
+            Array.Reverse(HashBytes);
         }
 
-        public override string ToString()
+#if NETCOREAPP2_1
+        public Hash(Span<byte> span)
         {
-            return BitConverter.ToString(HashBytes).Replace("-", string.Empty).ToLower();
+            HashBytes = span.ToArray();
+            Array.Reverse(HashBytes);
+        }
+        
+        public ReadOnlySpan<byte> ReadFromPayload(ReadOnlySpan<byte> data)
+        {
+            HashBytes = data.Slice(0, Size).ToArray();
+            Array.Reverse(HashBytes);
+            return data.Slice(Size);
         }
 
+        public Span<byte> WriteToPayload(Span<byte> dest)
+        {
+            NetworkHashBytes.CopyTo(dest);
+            return dest.Slice(Size);
+        }
+
+        public byte[] ToArray()
+        {
+            var ret = new byte[Size];
+            WriteToPayload(ret);
+            return ret;
+        }
+#else
         public int ReadFromPayload(byte[] data, int offset)
         {
             Array.Copy(data, offset, HashBytes, 0, HashBytes.Length);
@@ -60,6 +97,12 @@ namespace hashstream.bitcoin_lib.BlockChain
         public byte[] ToArray()
         {
             return NetworkHashBytes;
+        }
+#endif
+
+        public override string ToString()
+        {
+            return HashBytes.ToHex();
         }
 
         public static implicit operator Hash(byte[] b)

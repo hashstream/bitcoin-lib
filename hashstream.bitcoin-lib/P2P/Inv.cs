@@ -7,20 +7,44 @@ namespace hashstream.bitcoin_lib.P2P
 {
     public class Inv : IStreamable, ICommand
     {
-        public VarInt Count { get; set; }
-        public Inventory[] Inventory { get; set; }
+        public VarInt Count => Inventory?.Length;
+        public Inventory[] Inventory { get; set; } = new Inventory[0];
 
         public string Command => "inv";
 
-        public int Size => Count.Size + (P2P.Inventory.Size * Count);
+        public int Size => Count.Size + (P2P.Inventory.StaticSize * Count);
 
+#if NETCOREAPP2_1
+        public ReadOnlySpan<byte> ReadFromPayload(ReadOnlySpan<byte> data)
+        {
+            var next = data.ReadAndSlice(out VarInt tCount)
+                .ReadAndSlice(tCount, out Inventory[] tInventory);
+
+            Inventory = tInventory;
+
+            return next;
+        }
+
+        public Span<byte> WriteToPayload(Span<byte> dest)
+        {
+            return dest.WriteAndSlice(Count)
+                .WriteAndSlice(Inventory);
+        }
+
+        public byte[] ToArray()
+        {
+            var ret = new byte[Size];
+            WriteToPayload(ret);
+            return ret;
+        }
+#else
         public int ReadFromPayload(byte[] data, int offset)
         {
             var roffset = offset;
-            Count = data.ReadFromBuffer<VarInt>(ref roffset);
+            var invc = data.ReadFromBuffer<VarInt>(ref roffset);
 
-            Inventory = new Inventory[Count];
-            for (var x = 0; x < Count; x++)
+            Inventory = new Inventory[invc];
+            for (var x = 0; x < invc; x++)
             {
                 Inventory[x] = data.ReadFromBuffer<Inventory>(ref roffset);
             }
@@ -42,6 +66,7 @@ namespace hashstream.bitcoin_lib.P2P
 
             return ret;
         }
+#endif
     }
 
 }

@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace hashstream.bitcoin_lib.P2P
+﻿namespace hashstream.bitcoin_lib.P2P
 {
-    public class GetHeaders : GetBlocks
+    public class GetHeaders : GetBlocks, ICommand
     {
         public new string Command => "getheaders";
     }

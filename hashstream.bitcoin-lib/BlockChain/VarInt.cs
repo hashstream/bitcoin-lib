@@ -8,8 +8,30 @@ namespace hashstream.bitcoin_lib.BlockChain
 {
     public class VarInt : IStreamable, IEquatable<UInt64>
     {
-        public UInt64 Value { get; set; } = 0;
-        public int Size { get; private set; } = 1;
+        public UInt64 Value { get; set; }
+
+        public int Size
+        {
+            get
+            {
+                if (Value < 253)
+                {
+                    return 1;
+                }
+                else if (Value <= UInt16.MaxValue)
+                {
+                    return 3;
+                }
+                else if (Value <= UInt32.MaxValue)
+                {
+                    return 5;
+                }
+                else
+                {
+                    return 9;
+                }
+            }
+        }
         
         public VarInt()
         {
@@ -19,22 +41,6 @@ namespace hashstream.bitcoin_lib.BlockChain
         public VarInt(UInt64 v)
         {
             Value = v;
-            if (v < 253)
-            {
-                Size = 1;
-            }
-            else if (v <= UInt16.MaxValue)
-            {
-                Size = 3;
-            }
-            else if (v <= UInt32.MaxValue)
-            {
-                Size = 5;
-            }
-            else
-            {
-                Size = 9;
-            }
         }
 
         public bool Equals(ulong other)
@@ -42,33 +48,84 @@ namespace hashstream.bitcoin_lib.BlockChain
             return Value == other;
         }
 
-        public TypeCode GetTypeCode()
+#if NETCOREAPP2_1
+        public ReadOnlySpan<byte> ReadFromPayload(ReadOnlySpan<byte> data)
         {
-            return TypeCode.UInt64;
+            var b1 = data[0];
+            var ret = data.Slice(1);
+            
+            if (b1 < 253)
+            {
+                Value = b1;
+            }
+            else if (b1 == 0xfd)
+            {
+                ret = ret.ReadAndSlice(out UInt16 tVal);
+                Value = tVal;
+            }
+            else if (b1 == 0xfe)
+            {
+                ret = ret.ReadAndSlice(out UInt32 tVal);
+                Value = tVal;
+            }
+            else if (b1 == 0xff)
+            {
+                ret = ret.ReadAndSlice(out UInt64 tVal);
+                Value = tVal;
+            }
+            else
+            {
+                throw new Exception("WTF!");
+            }
+
+            return ret;
         }
 
+        public Span<byte> WriteToPayload(Span<byte> dest)
+        {
+            if (Value < 0xfd)
+            {
+                return dest.WriteAndSlice((byte)Value);
+            }
+            else if (Value <= UInt16.MaxValue)
+            {
+                return dest.WriteAndSlice((byte)0xfd).WriteAndSlice((UInt16)Value);
+            }
+            else if (Value <= UInt32.MaxValue)
+            {
+                return dest.WriteAndSlice((byte)0xfe).WriteAndSlice((UInt16)Value);
+            }
+            else
+            {
+                return dest.WriteAndSlice((byte)0xff).WriteAndSlice((UInt16)Value);
+            }
+        }
+
+        public byte[] ToArray()
+        {
+            var ret = new byte[Size];
+            WriteToPayload(ret);
+            return ret;
+        }
+#else
         public int ReadFromPayload(byte[] header, int offset)
         {
             var b1 = header[offset];
 
             if (b1 < 253)
             {
-                Size = 1;
                 Value = (UInt64)b1;
             }
             else if (b1 == 0xfd)
             {
-                Size = 3;
                 Value = BitConverter.ToUInt16(header, offset + 1);
             }
             else if (b1 == 0xfe)
             {
-                Size = 5;
                 Value = BitConverter.ToUInt32(header, offset + 1);
             }
             else if (b1 == 0xff)
             {
-                Size = 9;
                 Value = BitConverter.ToUInt64(header, offset + 1);
             }
             else
@@ -109,6 +166,7 @@ namespace hashstream.bitcoin_lib.BlockChain
                 return ms.ToArray();
             }
         }
+#endif
 
         public static implicit operator int(VarInt v)
         {

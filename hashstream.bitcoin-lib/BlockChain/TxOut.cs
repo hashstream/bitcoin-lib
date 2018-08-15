@@ -11,6 +11,36 @@ namespace hashstream.bitcoin_lib.BlockChain
 
         public int Size => 8 + RedeemScript.Size;
 
+        public Address GetAddress()
+        {
+            return RedeemScript.GetAddress();
+        }
+        
+#if NETCOREAPP2_1
+        public ReadOnlySpan<byte> ReadFromPayload(ReadOnlySpan<byte> data)
+        {
+            var ret = data.ReadAndSlice(out UInt64 tValue)
+                .ReadAndSlice(out StandardScript tScriptPubKey);
+
+            Value = tValue;
+            RedeemScript = tScriptPubKey;
+
+            return ret;
+        }
+
+        public Span<byte> WriteToPayload(Span<byte> dest)
+        {
+            return dest.WriteAndSlice(Value)
+                .WriteAndSlice(RedeemScript);
+        }
+
+        public byte[] ToArray()
+        {
+            var ret = new byte[Size];
+            WriteToPayload(ret);
+            return ret;
+        }
+#else
         public int ReadFromPayload(byte[] data, int offset)
         {
             var roffset = offset;
@@ -18,11 +48,6 @@ namespace hashstream.bitcoin_lib.BlockChain
             RedeemScript = data.ReadFromBuffer<StandardScript>(ref roffset);
 
             return Size;
-        }
-
-        public Address GetAddress()
-        {
-            return RedeemScript.GetAddress();
         }
 
         public byte[] ToArray()
@@ -35,5 +60,7 @@ namespace hashstream.bitcoin_lib.BlockChain
 
             return ret;
         }
+#endif
+
     }
 }

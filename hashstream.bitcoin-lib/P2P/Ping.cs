@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace hashstream.bitcoin_lib.P2P
 {
@@ -10,7 +8,9 @@ namespace hashstream.bitcoin_lib.P2P
 
         public string Command => "ping";
 
-        public static int Size = 8;
+        public int Size => StaticSize;
+
+        public static int StaticSize => 8;
 
         public Ping()
         {
@@ -19,6 +19,28 @@ namespace hashstream.bitcoin_lib.P2P
             Nonce = BitConverter.ToUInt64(nonce, 0);
         }
 
+#if NETCOREAPP2_1
+        public ReadOnlySpan<byte> ReadFromPayload(ReadOnlySpan<byte> data)
+        {
+            var next = data.ReadAndSlice(out UInt64 tNonce);
+
+            Nonce = tNonce;
+
+            return next;
+        }
+
+        public Span<byte> WriteToPayload(Span<byte> dest)
+        {
+            return dest.WriteAndSlice(Nonce);
+        }
+
+        public byte[] ToArray()
+        {
+            var ret = new byte[Size];
+            WriteToPayload(ret);
+            return ret;
+        }
+#else
         public int ReadFromPayload(byte[] data, int offset)
         {
             Nonce = BitConverter.ToUInt64(data, offset);
@@ -30,6 +52,6 @@ namespace hashstream.bitcoin_lib.P2P
         {
             return BitConverter.GetBytes(Nonce);
         }
-
+#endif
     }
 }

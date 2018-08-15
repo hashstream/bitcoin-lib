@@ -3,13 +3,6 @@ using System.Collections.Generic;
 
 namespace hashstream.bitcoin_lib.Script
 {
-    public enum CScriptFrameType
-    {
-        OpCode,
-        Data,
-        Number
-    }
-
     public class ScriptFrame
     {
         public CScriptFrameType Type { get; private set; }
@@ -198,4 +191,11 @@ namespace hashstream.bitcoin_lib.Script
             return hashCode;
         }
     }
+    public enum CScriptFrameType
+    {
+        OpCode,
+        Data,
+        Number
+    }
+
 }

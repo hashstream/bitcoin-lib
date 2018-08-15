@@ -13,10 +13,10 @@ namespace hashstream.bitcoin_lib.BlockChain
 
         public Int32 Version { get; set; } = CURRENT_VERSION;
         public byte Flags { get; set; }
-        public VarInt TxInCount { get; set; }
-        public TxIn[] TxIn { get; set; }
-        public VarInt TxOutCount { get; set; }
-        public TxOut[] TxOut { get; set; }
+        public VarInt TxInCount => TxIn?.Length;
+        public TxIn[] TxIn { get; set; } = new TxIn[0];
+        public VarInt TxOutCount => TxOut?.Length;
+        public TxOut[] TxOut { get; set; } = new TxOut[0];
         public UInt32 LockTime { get; set; }
 
         public bool AllowWitness => (CURRENT_VERSION & SERIALIZE_TRANSACTION_NO_WITNESS) == 0;
@@ -25,6 +25,84 @@ namespace hashstream.bitcoin_lib.BlockChain
 
         public Hash TxHash => new Hash(ToArray().SHA256d());
 
+        public bool HasWitness()
+        {
+            return TxIn.Any(a => a.WitnessScripts != null);
+        }
+
+#if NETCOREAPP2_1
+        public ReadOnlySpan<byte> ReadFromPayload(ReadOnlySpan<byte> data)
+        {
+            var next = data.ReadAndSlice(out Int32 tVersion);
+
+            var extended = next[0] == 0 && next[1] != 0 && AllowWitness;
+            if (extended)
+            {
+                Flags = next[1];
+                next = next.Slice(2);
+            }
+
+            next = next.ReadAndSlice(out VarInt tTxInCount)
+                .ReadAndSlice(tTxInCount, out TxIn[] tTxIn)
+                .ReadAndSlice(out VarInt tTxOutCount)
+                .ReadAndSlice(tTxOutCount, out TxOut[] tTxOut);
+
+            if ((Flags & 1) == 1 && AllowWitness)
+            {
+                foreach (var tx in tTxIn)
+                {
+                    next = next.ReadAndSlice(out WitnessScript tWitnessScript);
+                    tx.WitnessScripts = tWitnessScript;
+                }
+            }
+
+            next = next.ReadAndSlice(out UInt32 tLocktime);
+
+            Version = tVersion;
+            TxIn = tTxIn;
+            TxOut = tTxOut;
+            LockTime = tLocktime;
+
+            return next;
+        }
+
+        public Span<byte> WriteToPayload(Span<byte> dest)
+        {
+            Flags |= AllowWitness && HasWitness() ? (byte)1 : (byte)0;
+
+            var ret = dest.WriteAndSlice(Version);
+
+            //use extended block format
+            if (Flags != 0)
+            {
+                new byte[] { 0x00, Flags }.AsSpan().CopyTo(ret);
+                ret = ret.Slice(2);
+            }
+
+            ret = ret.WriteAndSlice(TxInCount)
+                .WriteAndSlice(TxIn)
+                .WriteAndSlice(TxOutCount)
+                .WriteAndSlice(TxOut);
+
+            //serialize witness scripts
+            if ((Flags & 1) == 1 && AllowWitness)
+            {
+                foreach (var tin in TxIn)
+                {
+                    ret = ret.WriteAndSlice(tin.WitnessScripts ?? new WitnessScript());
+                }
+            }
+
+            return ret.WriteAndSlice(LockTime);
+        }
+
+        public byte[] ToArray()
+        {
+            var dest = new byte[Size];
+            WriteToPayload(dest);
+            return dest;
+        }
+#else
         public int ReadFromPayload(byte[] data, int offset)
         {
             var roffset = offset;
@@ -39,18 +117,18 @@ namespace hashstream.bitcoin_lib.BlockChain
                 roffset += 2;
             }
 
-            TxInCount = data.ReadFromBuffer<VarInt>(ref roffset);
+            var txinc = data.ReadFromBuffer<VarInt>(ref roffset);
             
-            TxIn = new TxIn[TxInCount];
-            for (var x = 0; x < TxInCount; x++)
+            TxIn = new TxIn[txinc];
+            for (var x = 0; x < txinc; x++)
             {
                 TxIn[x] = data.ReadFromBuffer<TxIn>(ref roffset);
             }
 
-            TxOutCount = data.ReadFromBuffer<VarInt>(ref roffset);
+            var txoc = data.ReadFromBuffer<VarInt>(ref roffset);
 
-            TxOut = new TxOut[TxOutCount];
-            for (var x = 0; x < TxOutCount; x++)
+            TxOut = new TxOut[txoc];
+            for (var x = 0; x < txoc; x++)
             {
                 TxOut[x] = data.ReadFromBuffer<TxOut>(ref roffset);
             }
@@ -112,10 +190,6 @@ namespace hashstream.bitcoin_lib.BlockChain
 
             return ret;
         }
-
-        public bool HasWitness()
-        {
-            return TxIn.Any(a => a.WitnessScripts != null);
-        }
+#endif
     }
 }

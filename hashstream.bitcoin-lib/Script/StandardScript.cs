@@ -5,52 +5,6 @@ using System;
 
 namespace hashstream.bitcoin_lib.Script
 {
-    public enum TxOutType
-    {
-        TX_NONSTANDARD,
-        TX_PUBKEY,
-        TX_PUBKEYHASH,
-        TX_SCRIPTHASH,
-        TX_MULTISIG,
-        TX_NULL_DATA,
-        TX_WITNESS_V0_SCRIPTHASH,
-        TX_WITNESS_V0_KEYHASH,
-        TX_WITNESS_UNKNOWN
-    }
-
-    [Flags]
-    public enum SigHashFlags
-    {
-        SIGHASH_ALL = 1,
-        SIGHASH_NONE = 2,
-        SIGHASH_SINGLE = 3,
-        SIGHASH_ANYONECANPAY = 0x80,
-    }
-
-    //https://github.com/bitcoin/bitcoin/blob/master/src/script/interpreter.h#L35
-    [Flags]
-    public enum ScriptVerificationFlags
-    {
-        SCRIPT_VERIFY_NONE = 0,
-        SCRIPT_VERIFY_P2SH = (1 << 0),
-        SCRIPT_VERIFY_STRICTENC = (1 << 1),
-        SCRIPT_VERIFY_DERSIG = (1 << 2),
-        SCRIPT_VERIFY_LOW_S = (1 << 3),
-        SCRIPT_VERIFY_NULLDUMMY = (1 << 4),
-        SCRIPT_VERIFY_SIGPUSHONLY = (1 << 5),
-        SCRIPT_VERIFY_MINIMALDATA = (1 << 6),
-        SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_NOPS = (1 << 7),
-        SCRIPT_VERIFY_CLEANSTACK = (1 << 8),
-        SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY = (1 << 9),
-        SCRIPT_VERIFY_CHECKSEQUENCEVERIFY = (1 << 10),
-        SCRIPT_VERIFY_WITNESS = (1 << 11),
-        SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM = (1 << 12),
-        SCRIPT_VERIFY_MINIMALIF = (1 << 13),
-        SCRIPT_VERIFY_NULLFAIL = (1 << 14),
-        SCRIPT_VERIFY_WITNESS_PUBKEYTYPE = (1 << 15),
-        SCRIPT_VERIFY_CONST_SCRIPTCODE = (1 << 16)
-    }
-
     public class StandardScript : Script, IStreamable
     {
         public StandardScript() : base()
@@ -127,6 +81,19 @@ namespace hashstream.bitcoin_lib.Script
             }
         }
 
+#if NETCOREAPP2_1
+        public new ReadOnlySpan<byte> ReadFromPayload(ReadOnlySpan<byte> data)
+        {
+            var next = base.ReadFromPayload(data);
+
+            if(TxType != TxOutType.TX_NONSTANDARD)
+            {
+                ParsedScript = ParseScript(ScriptBytes);
+            }
+
+            return next;
+        }
+#else
         public new int ReadFromPayload(byte[] data, int offset)
         {
             var ret = base.ReadFromPayload(data, offset);
@@ -138,6 +105,7 @@ namespace hashstream.bitcoin_lib.Script
 
             return ret;
         }
+#endif
 
         public bool IsPayToScriptHash()
         {
@@ -257,4 +225,51 @@ namespace hashstream.bitcoin_lib.Script
             return null;
         }
     }
+
+    public enum TxOutType
+    {
+        TX_NONSTANDARD,
+        TX_PUBKEY,
+        TX_PUBKEYHASH,
+        TX_SCRIPTHASH,
+        TX_MULTISIG,
+        TX_NULL_DATA,
+        TX_WITNESS_V0_SCRIPTHASH,
+        TX_WITNESS_V0_KEYHASH,
+        TX_WITNESS_UNKNOWN
+    }
+
+    [Flags]
+    public enum SigHashFlags
+    {
+        SIGHASH_ALL = 1,
+        SIGHASH_NONE = 2,
+        SIGHASH_SINGLE = 3,
+        SIGHASH_ANYONECANPAY = 0x80,
+    }
+
+    //https://github.com/bitcoin/bitcoin/blob/master/src/script/interpreter.h#L35
+    [Flags]
+    public enum ScriptVerificationFlags
+    {
+        SCRIPT_VERIFY_NONE = 0,
+        SCRIPT_VERIFY_P2SH = (1 << 0),
+        SCRIPT_VERIFY_STRICTENC = (1 << 1),
+        SCRIPT_VERIFY_DERSIG = (1 << 2),
+        SCRIPT_VERIFY_LOW_S = (1 << 3),
+        SCRIPT_VERIFY_NULLDUMMY = (1 << 4),
+        SCRIPT_VERIFY_SIGPUSHONLY = (1 << 5),
+        SCRIPT_VERIFY_MINIMALDATA = (1 << 6),
+        SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_NOPS = (1 << 7),
+        SCRIPT_VERIFY_CLEANSTACK = (1 << 8),
+        SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY = (1 << 9),
+        SCRIPT_VERIFY_CHECKSEQUENCEVERIFY = (1 << 10),
+        SCRIPT_VERIFY_WITNESS = (1 << 11),
+        SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM = (1 << 12),
+        SCRIPT_VERIFY_MINIMALIF = (1 << 13),
+        SCRIPT_VERIFY_NULLFAIL = (1 << 14),
+        SCRIPT_VERIFY_WITNESS_PUBKEYTYPE = (1 << 15),
+        SCRIPT_VERIFY_CONST_SCRIPTCODE = (1 << 16)
+    }
+
 }

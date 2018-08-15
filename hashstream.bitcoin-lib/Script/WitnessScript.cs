@@ -7,18 +7,42 @@ namespace hashstream.bitcoin_lib.Script
 {
     public class WitnessScript : IStreamable
     {
-        public VarInt ScriptCount { get; set; }
-        public Script[] Stack { get; set; }
+        public VarInt ScriptCount => Stack?.Length;
+        public Script[] Stack { get; set; } = new Script[0];
 
         public int Size => ScriptCount.Size + Stack.Sum(a => a.Size);
+        
+#if NETCOREAPP2_1
+        public ReadOnlySpan<byte> ReadFromPayload(ReadOnlySpan<byte> data)
+        {
+            var next = data.ReadAndSlice(out VarInt tScriptCount)
+                .ReadAndSlice(tScriptCount, out Script[] tStack);
 
+            Stack = tStack;
+
+            return next;
+        }
+
+        public Span<byte> WriteToPayload(Span<byte> dest)
+        {
+            return dest.WriteAndSlice(ScriptCount)
+                .WriteAndSlice(Stack);
+        }
+
+        public byte[] ToArray()
+        {
+            var ret = new byte[Size];
+            WriteToPayload(ret);
+            return ret;
+        }
+#else
         public int ReadFromPayload(byte[] data, int offset)
         {
             var roffset = offset;
-            ScriptCount = data.ReadFromBuffer<VarInt>(ref roffset);
+            var sc = data.ReadFromBuffer<VarInt>(ref roffset);
             
-            Stack = new Script[ScriptCount];
-            for (var x = 0; x < Stack.Length; x++)
+            Stack = new Script[sc];
+            for (var x = 0; x < sc; x++)
             {
                 Stack[x] = data.ReadFromBuffer<Script>(ref roffset);
             }
@@ -40,5 +64,6 @@ namespace hashstream.bitcoin_lib.Script
 
             return ret;
         }
+#endif
     }
 }
