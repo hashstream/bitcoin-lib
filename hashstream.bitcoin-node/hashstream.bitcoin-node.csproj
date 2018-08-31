@@ -2,15 +2,10 @@
 
   <PropertyGroup>
     <TargetFrameworks>netcoreapp2.1;net461</TargetFrameworks>
-    <AssemblyName>hashstream.bitcoin-node</AssemblyName>
     <RootNamespace>hashstream.bitcoin_node</RootNamespace>
     <Platforms>AnyCPU;x64</Platforms>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <LangVersion>latest</LangVersion>
-    <Company>Hashstream</Company>
-    <Product>Hashstream Bitcoin Node Lib</Product>
-    <Authors>Hashstream</Authors>
-    <Description>Hashstream Bitcoin Node Lib</Description>
+    <OutputType>Exe</OutputType>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,6 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\hashstream.bitcoin-lib\hashstream.bitcoin-lib.csproj" />
+    <ProjectReference Include="..\hashstream.bitcoin-node-lib\hashstream.bitcoin-node-lib.csproj" />
   </ItemGroup>
 
 </Project>

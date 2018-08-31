@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace hashstream.bitcoin_node_lib
 {
-    public class BitcoinNode
+    public class BitcoinNode<T> where T : PeerHandler, new()
     {
         private Socket Sock { get; set; }
         private Task AcceptTask { get; set; }
@@ -25,11 +25,11 @@ namespace hashstream.bitcoin_node_lib
             "seed.btc.petertodd.org"
         };
 
-        private ConcurrentDictionary<Guid, BitcoinNodePeer> Peers { get; set; } = new ConcurrentDictionary<Guid, BitcoinNodePeer>();
+        private ConcurrentDictionary<Guid, T> Peers { get; set; } = new ConcurrentDictionary<Guid, T>();
 
         public delegate void Log(string msg);
-        public delegate void PeerConnected(BitcoinNodePeer np);
-        public delegate void PeerDisconnected(BitcoinNodePeer np);
+        public delegate void PeerConnected(T np);
+        public delegate void PeerDisconnected(T np);
 
         public event Log OnLog;
         public event PeerConnected OnPeerConnected;
@@ -88,7 +88,8 @@ namespace hashstream.bitcoin_node_lib
                 if (ns != null)
                 {
                     var id = Guid.NewGuid();
-                    var np = new BitcoinNodePeer(new BitcoinPeer(ns, true), id);
+                    var np = new T();
+                    np.Init(new BitcoinPeer(ns, true), id);
 
                     Peers.TryAdd(id, np);
                 }
@@ -107,13 +108,14 @@ namespace hashstream.bitcoin_node_lib
         public async Task AddPeer(IPEndPoint ip)
         {
             var id = Guid.NewGuid();
-            var np = new BitcoinNodePeer(new BitcoinPeer(ip), id);
+            var np = new T();
+            np.Init(new BitcoinPeer(ip), id);
             await np.SendVersion();
 
             Peers.TryAdd(id, np);
         }
 
-        public IEnumerable<BitcoinNodePeer> EnumeratePeers()
+        public IEnumerable<T> EnumeratePeers()
         {
             foreach(var node in Peers)
             {

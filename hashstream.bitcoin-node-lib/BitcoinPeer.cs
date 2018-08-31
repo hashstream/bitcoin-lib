@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
+using hashstream.bitcoin_lib.BlockChain;
 
 #if NETCOREAPP2_1
 using System.Buffers;
@@ -43,6 +44,7 @@ namespace hashstream.bitcoin_node_lib
         public delegate Task SendHeadersEvent(BitcoinPeer s, SendHeaders sh);
         public delegate Task VerAckEvent(BitcoinPeer s, VerAck va);
         public delegate Task VersionEvent(BitcoinPeer s, bitcoin_lib.P2P.Version v);
+        public delegate Task TxEvent(BitcoinPeer s, Tx v);
 
         public event AddrEvent OnAddr;
         public event AlertEvent OnAlert;
@@ -64,6 +66,7 @@ namespace hashstream.bitcoin_node_lib
         public event SendHeadersEvent OnSendHeaders;
         public event VerAckEvent OnVerAck;
         public event VersionEvent OnVersion;
+        public event TxEvent OnTx;
 
         public BitcoinPeer(Socket s, bool isInbound = false)
         {
@@ -371,6 +374,16 @@ namespace hashstream.bitcoin_node_lib
                         var a = pl.ReadFromBuffer<bitcoin_lib.P2P.Version>();
 #endif
                         await OnVersion?.Invoke(this, a);
+                        break;
+                    }
+                case "tx\0\0\0\0\0\0\0\0\0\0":
+                    {
+#if NETCOREAPP2_1
+                        var a = await ms.ReadMessage<Tx>((int)h.PayloadSize, h.Checksum);
+#else
+                        var a = pl.ReadFromBuffer<Tx>();
+#endif
+                        await OnTx?.Invoke(this, a);
                         break;
                     }
                 default:

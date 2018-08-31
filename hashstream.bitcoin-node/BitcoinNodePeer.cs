@@ -1,21 +1,24 @@
 ﻿using hashstream.bitcoin_lib;
+using hashstream.bitcoin_lib.BlockChain;
 using hashstream.bitcoin_lib.P2P;
+using hashstream.bitcoin_node_lib;
 using System;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 
-namespace hashstream.bitcoin_node_lib
+namespace hashstream.bitcoin_node
 {
-    public class BitcoinNodePeer
+    public class BitcoinNodePeer : PeerHandler
     {
         private Guid Id { get; set; }
         private BitcoinPeer Peer { get; set; }
 
         public async Task WriteMessage<T>(T msg) where T : IStreamable, ICommand => await Peer.WriteMessage(msg);
 
-        public BitcoinNodePeer(BitcoinPeer p, Guid id)
+        public override void Init(BitcoinPeer p, Guid g)
         {
-            Id = id;
+            Id = g;
 
             Peer = p;
             Peer.OnAddr += Peer_OnAddr;
@@ -38,14 +41,15 @@ namespace hashstream.bitcoin_node_lib
             Peer.OnSendHeaders += Peer_OnSendHeaders;
             Peer.OnVerAck += Peer_OnVerAck;
             Peer.OnVersion += Peer_OnVersion;
+            Peer.OnTx += Peer_OnTx;
 
             Peer.Start();
         }
 
-        public async Task SendVersion()
+        public override async Task SendVersion()
         {
             //Send version
-            var v = new bitcoin_lib.P2P.Version(BitcoinNode.UserAgent);
+            var v = new bitcoin_lib.P2P.Version(BitcoinNode<BitcoinNodePeer>.UserAgent);
             var nd = new byte[9];
             new Random().NextBytes(nd);
 
@@ -68,6 +72,12 @@ namespace hashstream.bitcoin_node_lib
             var a = new Addr();
 
             await WriteMessage(a);
+        }
+
+
+        private async Task Peer_OnTx(BitcoinPeer s, Tx v)
+        {
+            Console.WriteLine($"Got tx: {v.TxHash}");
         }
 
         private async Task Peer_OnVersion(BitcoinPeer s, bitcoin_lib.P2P.Version v)
@@ -128,12 +138,20 @@ namespace hashstream.bitcoin_node_lib
 
         private async Task Peer_OnInv(BitcoinPeer s, Inv i)
         {
-            
+            //simulate
+            var gd = new GetData();
+            gd.Inventory = i.Inventory;
+
+            await s.WriteMessage(gd);
         }
 
         private async Task Peer_OnHeaders(BitcoinPeer s, Headers h)
         {
-            
+            //simulate
+            var gb = new GetBlocks();
+            gb.Hashes = h.Header.Select(a => a.Hash).ToArray();
+
+            await s.WriteMessage(gb);
         }
 
         private async Task Peer_OnGetHeaders(BitcoinPeer s, GetHeaders gh)

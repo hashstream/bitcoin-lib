@@ -68,7 +68,7 @@ namespace hashstream.bitcoin_node_lib
                         throw new Exception($"Buffer size is larger than the max size {MemoryPool<byte>.Shared.MaxBufferSize}");
                     }
 
-                    var newbuf = MemoryPool<byte>.Shared.Rent((size / InternalBufferSize) * InternalBufferSize).Memory;
+                    var newbuf = MemoryPool<byte>.Shared.Rent((int)(Math.Ceiling(size / (decimal)InternalBufferSize) * InternalBufferSize)).Memory;
                     if(BufferedData > 0)
                     {
                         InternalBuffer.Slice(0, BufferedData).CopyTo(newbuf);

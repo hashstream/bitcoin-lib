@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace hashstream.bitcoin_node_lib
+namespace hashstream.bitcoin_node
 {
     public class BlockChain
     {
