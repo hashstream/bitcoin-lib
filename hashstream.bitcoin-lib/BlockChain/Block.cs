@@ -2,6 +2,10 @@
 using System;
 using System.Linq;
 
+#if NETCOREAPP2_1
+using System.Buffers.Binary;
+#endif
+
 namespace hashstream.bitcoin_lib.BlockChain
 {
     public class Block : IStreamable, ICommand
@@ -13,6 +17,45 @@ namespace hashstream.bitcoin_lib.BlockChain
         public int Size => BlockHeader.StaticSize + TxnCount.Size + Txns.Sum(a => a.Size);
 
         public Hash Hash => Header.Hash;
+
+        public Int64 Height
+        {
+            get
+            {
+                if(Header.Version > 1)
+                {
+                    var cbtx = Txns[0];
+                    var sb = cbtx.TxIn[0].Script.ScriptBytes;
+
+                    var nlen = sb[0];
+                    if (nlen <= 8)
+                    {
+                        var numbuf = new byte[nlen <= 4 ? 4 : (nlen > 4 ? 8 : 8)];
+                        Array.Copy(sb, 1, numbuf, 0, nlen);
+#if NETCOREAPP2_1
+                        if (numbuf.Length == 4)
+                        {
+                            return BinaryPrimitives.ReadInt32LittleEndian(numbuf);
+                        }
+                        else
+                        {
+                            return BinaryPrimitives.ReadInt64LittleEndian(numbuf);
+                        }
+#else
+                    if (numbuf.Length == 4)
+                    {
+                        return BitConverter.ToInt32(numbuf, 0);
+                    }
+                    else
+                    {
+                        return BitConverter.ToInt64(numbuf, 0);
+                    }
+#endif
+                    }
+                }
+                return -1;
+            }
+        }
 
         public string Command => "block";
 
