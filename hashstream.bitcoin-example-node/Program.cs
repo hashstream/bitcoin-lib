@@ -16,7 +16,11 @@ namespace hashstream.bitcoin_example_node
             
             node.Start();
 
-            //node.AddPeer(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 12375)).RunSynchronously();
+            var ct = node.AddPeer(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 8333));
+            if (!ct.IsCompleted)
+            {
+                ct.RunSynchronously();
+            }
             
             Console.ReadKey();
         }

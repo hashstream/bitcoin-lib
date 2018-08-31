@@ -4,17 +4,14 @@
     <TargetFrameworks>netcoreapp2.1;net461</TargetFrameworks>
     <RootNamespace>hashstream.bitcoin_lib</RootNamespace>
     <Platforms>AnyCPU;x64</Platforms>
+    <LangVersion>latest</LangVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Authors>Hashstream</Authors>
     <Company>Hashstream</Company>
     <Product>Hashstream Bitcoin Lib</Product>
     <Description>Hashstream Bitcoin Lib</Description>
   </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|netcoreapp2.1|AnyCPU'">
-    <LangVersion>latest</LangVersion>
-  </PropertyGroup>
-
+  
   <ItemGroup>
     <Reference Include="System">
       <HintPath>System</HintPath>

@@ -6,14 +6,11 @@
     <RootNamespace>hashstream.bitcoin_node</RootNamespace>
     <Platforms>AnyCPU;x64</Platforms>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <LangVersion>latest</LangVersion>
     <Company>Hashstream</Company>
     <Product>Hashstream Bitcoin Node Lib</Product>
     <Authors>Hashstream</Authors>
     <Description>Hashstream Bitcoin Node Lib</Description>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|netcoreapp2.1|AnyCPU'">
-    <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>

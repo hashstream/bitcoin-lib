@@ -23,17 +23,17 @@ namespace hashstream.bitcoin_lib.P2P
 
         public byte[] ToArray()
         {
-            return new byte[0];
+            return new byte[Size];
         }
 #else
         public int ReadFromPayload(byte[] data, int offset)
         {
-            return 0;
+            return Size;
         }
 
         public byte[] ToArray()
         {
-            return new byte[0];
+            return new byte[Size];
         }
 #endif
     }

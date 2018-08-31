@@ -103,6 +103,14 @@ namespace hashstream.bitcoin_lib
 
 #if NETCOREAPP2_1
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Span<byte> SHA256d<T>(T obj) where T : IStreamable
+        {
+            var tpl = new Span<byte>(new byte[obj.Size]);
+            obj.WriteToPayload(tpl);
+            return tpl.SHA256d();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string ToHex(this Span<byte> data)
         {
             return BitConverter.ToString(data.ToArray()).Replace("-", "").ToLower();
@@ -218,11 +226,11 @@ namespace hashstream.bitcoin_lib
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Span<byte> WriteAndSlice(this Span<byte> dest, string obj)
+        public static Span<byte> WriteAndSlice(this Span<byte> dest, string obj, int len = -1)
         {
             var bd = System.Text.Encoding.ASCII.GetBytes(obj);
             bd.AsSpan().CopyTo(dest);
-            return dest.Slice(bd.Length);
+            return dest.Slice(len == -1 ? bd.Length : len);
         }
 
         // Read ops
@@ -307,14 +315,14 @@ namespace hashstream.bitcoin_lib
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ReadOnlySpan<byte> ReadAndSlice(this ReadOnlySpan<byte> buf, out IPAddress obj)
         {
-            obj = new IPAddress(buf);
+            obj = new IPAddress(buf.Slice(0, 16));
             return buf.Slice(16);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ReadOnlySpan<byte> ReadAndSlice(this ReadOnlySpan<byte> buf, int len, out string obj)
         {
-            obj = System.Text.Encoding.ASCII.GetString(buf);
+            obj = System.Text.Encoding.ASCII.GetString(buf.Slice(0, len));
             return buf.Slice(len);
         }
 

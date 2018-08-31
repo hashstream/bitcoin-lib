@@ -9,7 +9,7 @@ namespace hashstream.bitcoin_lib.P2P
 {
     public class MessageHeader : IStreamable, ICommand
     {
-        public UInt32 Magic { get; set; } = 0xf9beb4d9;
+        public UInt32 Magic { get; set; } = 0xd9b4bef9;
         public string Command { get; set; }
         public UInt32 PayloadSize { get; set; }
         public UInt32 Checksum { get; set; }
@@ -27,17 +27,20 @@ namespace hashstream.bitcoin_lib.P2P
                 header.Command = msg.Command;
                 header.PayloadSize = (uint)msg.Size;
 
-                var packed_msg = MemoryPool<byte>.Shared.Rent(msg.Size + header.Size).Memory;
+                var total_size = msg.Size + header.Size;
+                var packed_msg_owner = MemoryPool<byte>.Shared.Rent(total_size);
+
+                var packed_msg = packed_msg_owner.Memory;
                 var body_slice = packed_msg.Span.Slice(header.Size);
                 msg.WriteToPayload(body_slice);
 
                 //create the checksum of the payload
-                var body_hash = body_slice.SHA256d();
+                var body_hash = body_slice.Slice(0, msg.Size).SHA256d();
                 header.Checksum = BitConverter.ToUInt32(new byte[] { body_hash[0], body_hash[1], body_hash[2], body_hash[3] });
 
                 header.WriteToPayload(packed_msg.Span);
 
-                return packed_msg;
+                return packed_msg.Slice(0, total_size);
             }
             else
             {
@@ -63,7 +66,7 @@ namespace hashstream.bitcoin_lib.P2P
         public Span<byte> WriteToPayload(Span<byte> dest)
         {
             return dest.WriteAndSlice(Magic)
-                .WriteAndSlice(Command)
+                .WriteAndSlice(Command, 12)
                 .WriteAndSlice(PayloadSize)
                 .WriteAndSlice(Checksum);
         }

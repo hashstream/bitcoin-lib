@@ -77,7 +77,7 @@ namespace hashstream.bitcoin_node_lib
         {
             Sock = new Socket(SocketType.Stream, ProtocolType.Tcp);
             Sock.LingerState.Enabled = false;
-            
+
             Sock.Connect(ip);
             Stream = new NetworkStream(Sock);
         }
@@ -89,7 +89,7 @@ namespace hashstream.bitcoin_node_lib
             Sock.Connect(new IPEndPoint(IPAddress.Parse(ip), port));
             Stream = new NetworkStream(Sock);
         }
-        
+
         public void Start()
         {
             ReadTask = ReadStream();
@@ -109,7 +109,7 @@ namespace hashstream.bitcoin_node_lib
         private async Task ReadStream()
         {
 #if NETCOREAPP2_1
-            var hdata = MemoryPool<byte>.Shared.Rent(MessageHeader.StaticSize).Memory;
+            var mstream = new MessageStream(Stream);
 #else
             var hdata = new byte[MessageHeader.StaticSize];
 #endif
@@ -120,279 +120,267 @@ namespace hashstream.bitcoin_node_lib
                 {
                     //try to read a header 
 #if NETCOREAPP2_1
-                    var rlen = await Stream.ReadAsync(hdata);
+                    var h = await mstream.ReadMessage<MessageHeader>(MessageHeader.StaticSize);
+                    if(h == default)
+                    {
+                        Stop();
+                        break;
+                    }
 #else
-                    var rlen = await Stream.ReadAsyncExact(hdata, 0, hdata.Length);
-#endif
+                    var rlen = await Stream.ReadAsyncExact(hdata, 0, hdata.Length); 
                     if (rlen == 0)
                     {
                         Stop();
                         break;
                     }
-
                     var h = new MessageHeader();
-#if NETCOREAPP2_1
-                    h.ReadFromPayload(hdata.Span);
-#else
                     h.ReadFromPayload(hdata, 0);
 #endif
                     if (h != null)
                     {
                         //read the payload
 #if NETCOREAPP2_1
-                        var pl = MemoryPool<byte>.Shared.Rent((int)h.PayloadSize).Memory;
-                        await Stream.ReadAsync(pl);
-
-                        //verify hash
-                        var h_chk = BitConverter.ToUInt32(pl.Span.SHA256d());
+                        await HandleCommand(h, mstream);
 #else
                         var pl = new byte[h.PayloadSize];
                         await Stream.ReadAsyncExact(pl, 0, pl.Length);
                         //verify hash
                         var h_chk = BitConverter.ToUInt32(pl.SHA256d(), 0);
-#endif
                         if (h_chk == h.Checksum)
                         {
-                            Console.WriteLine($"Got cmd: {h.Command}");
+                            throw new Exception("Checksum failed");
+                        }
 
-                            switch (h.Command)
-                            {
-                                case "addr\0\0\0\0\0\0\0\0":
-                                    {
-#if NETCOREAPP2_1
-                                        var a = new Addr();
-                                        a.ReadFromPayload(pl.Span);
-#else
-                                        var a = pl.ReadFromBuffer<Addr>();
+                        await HandleCommand(h, pl);
 #endif
-                                        await OnAddr?.Invoke(this, a);
-                                        break;
-                                    }
-                                case "alert\0\0\0\0\0\0\0":
-                                    {
-#if NETCOREAPP2_1
-                                        var a = new Alert();
-                                        a.ReadFromPayload(pl.Span);
-#else
-                                        var a = pl.ReadFromBuffer<Alert>();
-#endif
-                                        await OnAlert?.Invoke(this, a);
-                                        break;
-                                    }
-                                case "feefilter\0\0\0":
-                                    {
-#if NETCOREAPP2_1
-                                        var a = new FeeFilter();
-                                        a.ReadFromPayload(pl.Span);
-#else
-                                        var a = pl.ReadFromBuffer<FeeFilter>();
-#endif
-                                        await OnFeeFilter?.Invoke(this, a);
-                                        break;
-                                    }
-                                case "filteradd\0\0\0":
-                                    {
-#if NETCOREAPP2_1
-                                        var a = new FilterAdd();
-                                        a.ReadFromPayload(pl.Span);
-#else
-                                        var a = pl.ReadFromBuffer<FilterAdd>();
-#endif
-                                        await OnFilterAdd?.Invoke(this, a);
-                                        break;
-                                    }
-                                case "filterclear\0":
-                                    {
-#if NETCOREAPP2_1
-                                        var a = new FilterClear();
-                                        a.ReadFromPayload(pl.Span);
-#else
-                                        var a = pl.ReadFromBuffer<FilterClear>();
-#endif
-                                        await OnFilterClear?.Invoke(this, a);
-                                        break;
-                                    }
-                                case "filterload\0\0":
-                                    {
-#if NETCOREAPP2_1
-                                        var a = new FilterLoad();
-                                        a.ReadFromPayload(pl.Span);
-#else
-                                        var a = pl.ReadFromBuffer<FilterLoad>();
-#endif
-                                        await OnFilterLoad?.Invoke(this, a);
-                                        break;
-                                    }
-                                case "getaddr\0\0\0\0\0":
-                                    {
-#if NETCOREAPP2_1
-                                        var a = new GetAddr();
-                                        a.ReadFromPayload(pl.Span);
-#else
-                                        var a = pl.ReadFromBuffer<GetAddr>();
-#endif
-                                        await OnGetAddr?.Invoke(this, a);
-                                        break;
-                                    }
-                                case "getblocks\0\0\0":
-                                    {
-#if NETCOREAPP2_1
-                                        var a = new GetBlocks();
-                                        a.ReadFromPayload(pl.Span);
-#else
-                                        var a = pl.ReadFromBuffer<GetBlocks>();
-#endif
-                                        await OnGetBlocks?.Invoke(this, a);
-                                        break;
-                                    }
-                                case "getdata\0\0\0\0\0":
-                                    {
-#if NETCOREAPP2_1
-                                        var a = new GetData();
-                                        a.ReadFromPayload(pl.Span);
-#else
-                                        var a = pl.ReadFromBuffer<GetData>();
-#endif
-                                        await OnGetData?.Invoke(this, a);
-                                        break;
-                                    }
-                                case "getheaders\0\0":
-                                    {
-#if NETCOREAPP2_1
-                                        var a = new GetHeaders();
-                                        a.ReadFromPayload(pl.Span);
-#else
-                                        var a = pl.ReadFromBuffer<GetHeaders>();
-#endif
-                                        await OnGetHeaders?.Invoke(this, a);
-                                        break;
-                                    }
-                                case "headers\0\0\0\0\0":
-                                    {
-#if NETCOREAPP2_1
-                                        var a = new Headers();
-                                        a.ReadFromPayload(pl.Span);
-#else
-                                        var a = pl.ReadFromBuffer<Headers>();
-#endif
-                                        await OnHeaders?.Invoke(this, a);
-                                        break;
-                                    }
-                                case "inv\0\0\0\0\0\0\0\0\0":
-                                    {
-#if NETCOREAPP2_1
-                                        var a = new Inv();
-                                        a.ReadFromPayload(pl.Span);
-#else
-                                        var a = pl.ReadFromBuffer<Inv>();
-#endif
-                                        await OnInv?.Invoke(this, a);
-                                        break;
-                                    }
-                                case "mempool\0\0\0\0\0":
-                                    {
-#if NETCOREAPP2_1
-                                        var a = new MemPool();
-                                        a.ReadFromPayload(pl.Span);
-#else
-                                        var a = pl.ReadFromBuffer<MemPool>();
-#endif
-                                        await OnMemPool?.Invoke(this, a);
-                                        break;
-                                    }
-                                case "notfound\0\0\0\0":
-                                    {
-#if NETCOREAPP2_1
-                                        var a = new NotFound();
-                                        a.ReadFromPayload(pl.Span);
-#else
-                                        var a = pl.ReadFromBuffer<NotFound>();
-#endif
-                                        await OnNotFound?.Invoke(this, a);
-                                        break;
-                                    }
-                                case "ping\0\0\0\0\0\0\0\0":
-                                    {
-#if NETCOREAPP2_1
-                                        var a = new Ping();
-                                        a.ReadFromPayload(pl.Span);
-#else
-                                        var a = pl.ReadFromBuffer<Ping>();
-#endif
-                                        await OnPing?.Invoke(this, a);
-                                        break;
-                                    }
-                                case "pong\0\0\0\0\0\0\0\0":
-                                    {
-#if NETCOREAPP2_1
-                                        var a = new Pong();
-                                        a.ReadFromPayload(pl.Span);
-#else
-                                        var a = pl.ReadFromBuffer<Pong>();
-#endif
-                                        await OnPong?.Invoke(this, a);
-                                        break;
-                                    }
-                                case "reject\0\0\0\0\0\0":
-                                    {
-#if NETCOREAPP2_1
-                                        var a = new Reject();
-                                        a.ReadFromPayload(pl.Span);
-#else
-                                        var a = pl.ReadFromBuffer<Reject>();
-#endif
-                                        await OnReject?.Invoke(this, a);
-                                        break;
-                                    }
-                                case "sendheaders\0":
-                                    {
-#if NETCOREAPP2_1
-                                        var a = new SendHeaders();
-                                        a.ReadFromPayload(pl.Span);
-#else
-                                        var a = pl.ReadFromBuffer<SendHeaders>();
-#endif
-                                        await OnSendHeaders?.Invoke(this, a);
-                                        break;
-                                    }
-                                case "verack\0\0\0\0\0\0":
-                                    {
-#if NETCOREAPP2_1
-                                        var a = new VerAck();
-                                        a.ReadFromPayload(pl.Span);
-#else
-                                        var a = pl.ReadFromBuffer<VerAck>();
-#endif
-                                        await OnVerAck?.Invoke(this, a);
-                                        break;
-                                    } 
-                                case "version\0\0\0\0\0":
-                                    {
-#if NETCOREAPP2_1
-                                        var a = new bitcoin_lib.P2P.Version();
-                                        a.ReadFromPayload(pl.Span);
-#else
-                                        var a = pl.ReadFromBuffer<bitcoin_lib.P2P.Version>();
-#endif
-                                        await OnVersion?.Invoke(this, a);
-                                        break;
-                                    }
-                                default:
-                                    {
-                                        break;
-                                    }
-                            }
-                        }
-                        else
-                        {
-                            Closing = true;
-                        }
+
                     }
                 }
                 catch (Exception ex)
                 {
-                    Closing = true;
+                    Console.WriteLine(ex.Message);
                 }
+            }
+        }
+
+#if NETCOREAPP2_1
+        private async Task HandleCommand(MessageHeader h, MessageStream ms)
+#else
+        private async Task HandleCommand(MessageHeader h, byte[] pl)
+#endif
+        {
+            Console.WriteLine($"Got cmd: {h.Command}");
+
+            switch (h.Command)
+            {
+                case "addr\0\0\0\0\0\0\0\0":
+                    {
+#if NETCOREAPP2_1
+                        var a = await ms.ReadMessage<Addr>((int)h.PayloadSize, h.Checksum);
+#else
+                        var a = pl.ReadFromBuffer<Addr>();
+#endif
+                        await OnAddr?.Invoke(this, a);
+                        break;
+                    }
+                case "alert\0\0\0\0\0\0\0":
+                    {
+#if NETCOREAPP2_1
+                        var a = await ms.ReadMessage<Alert>((int)h.PayloadSize, h.Checksum);
+#else
+                        var a = pl.ReadFromBuffer<Alert>();
+#endif
+                        await OnAlert?.Invoke(this, a);
+                        break;
+                    }
+                case "feefilter\0\0\0":
+                    {
+#if NETCOREAPP2_1
+                        var a = await ms.ReadMessage<FeeFilter>((int)h.PayloadSize, h.Checksum);
+#else
+                        var a = pl.ReadFromBuffer<FeeFilter>();
+#endif
+                        await OnFeeFilter?.Invoke(this, a);
+                        break;
+                    }
+                case "filteradd\0\0\0":
+                    {
+#if NETCOREAPP2_1
+                        var a = await ms.ReadMessage<FilterAdd>((int)h.PayloadSize, h.Checksum);
+#else
+                        var a = pl.ReadFromBuffer<FilterAdd>();
+#endif
+                        await OnFilterAdd?.Invoke(this, a);
+                        break;
+                    }
+                case "filterclear\0":
+                    {
+#if NETCOREAPP2_1
+                        var a = await ms.ReadMessage<FilterClear>((int)h.PayloadSize, h.Checksum);
+#else
+                        var a = pl.ReadFromBuffer<FilterClear>();
+#endif
+                        await OnFilterClear?.Invoke(this, a);
+                        break;
+                    }
+                case "filterload\0\0":
+                    {
+#if NETCOREAPP2_1
+                        var a = await ms.ReadMessage<FilterLoad>((int)h.PayloadSize, h.Checksum);
+#else
+                        var a = pl.ReadFromBuffer<FilterLoad>();
+#endif
+                        await OnFilterLoad?.Invoke(this, a);
+                        break;
+                    }
+                case "getaddr\0\0\0\0\0":
+                    {
+#if NETCOREAPP2_1
+                        var a = await ms.ReadMessage<GetAddr>((int)h.PayloadSize, h.Checksum);
+#else
+                        var a = pl.ReadFromBuffer<GetAddr>();
+#endif
+                        await OnGetAddr?.Invoke(this, a);
+                        break;
+                    }
+                case "getblocks\0\0\0":
+                    {
+#if NETCOREAPP2_1
+                        var a = await ms.ReadMessage<GetBlocks>((int)h.PayloadSize, h.Checksum);
+#else
+                        var a = pl.ReadFromBuffer<GetBlocks>();
+#endif
+                        await OnGetBlocks?.Invoke(this, a);
+                        break;
+                    }
+                case "getdata\0\0\0\0\0":
+                    {
+#if NETCOREAPP2_1
+                        var a = await ms.ReadMessage<GetData>((int)h.PayloadSize, h.Checksum);
+#else
+                        var a = pl.ReadFromBuffer<GetData>();
+#endif
+                        await OnGetData?.Invoke(this, a);
+                        break;
+                    }
+                case "getheaders\0\0":
+                    {
+#if NETCOREAPP2_1
+                        var a = await ms.ReadMessage<GetHeaders>((int)h.PayloadSize, h.Checksum);
+#else
+                        var a = pl.ReadFromBuffer<GetHeaders>();
+#endif
+                        await OnGetHeaders?.Invoke(this, a);
+                        break;
+                    }
+                case "headers\0\0\0\0\0":
+                    {
+#if NETCOREAPP2_1
+                        var a = await ms.ReadMessage<Headers>((int)h.PayloadSize, h.Checksum);
+#else
+                        var a = pl.ReadFromBuffer<Headers>();
+#endif
+                        await OnHeaders?.Invoke(this, a);
+                        break;
+                    }
+                case "inv\0\0\0\0\0\0\0\0\0":
+                    {
+#if NETCOREAPP2_1
+                        var a = await ms.ReadMessage<Inv>((int)h.PayloadSize, h.Checksum);
+#else
+                        var a = pl.ReadFromBuffer<Inv>();
+#endif
+                        await OnInv?.Invoke(this, a);
+                        break;
+                    }
+                case "mempool\0\0\0\0\0":
+                    {
+#if NETCOREAPP2_1
+                        var a = await ms.ReadMessage<MemPool>((int)h.PayloadSize, h.Checksum);
+#else
+                        var a = pl.ReadFromBuffer<MemPool>();
+#endif
+                        await OnMemPool?.Invoke(this, a);
+                        break;
+                    }
+                case "notfound\0\0\0\0":
+                    {
+#if NETCOREAPP2_1
+                        var a = await ms.ReadMessage<NotFound>((int)h.PayloadSize, h.Checksum);
+#else
+                        var a = pl.ReadFromBuffer<NotFound>();
+#endif
+                        await OnNotFound?.Invoke(this, a);
+                        break;
+                    }
+                case "ping\0\0\0\0\0\0\0\0":
+                    {
+#if NETCOREAPP2_1
+                        var a = await ms.ReadMessage<Ping>((int)h.PayloadSize, h.Checksum);
+#else
+                        var a = pl.ReadFromBuffer<Ping>();
+#endif
+                        await OnPing?.Invoke(this, a);
+                        break;
+                    }
+                case "pong\0\0\0\0\0\0\0\0":
+                    {
+#if NETCOREAPP2_1
+                        var a = await ms.ReadMessage<Pong>((int)h.PayloadSize, h.Checksum);
+#else
+                        var a = pl.ReadFromBuffer<Pong>();
+#endif
+                        await OnPong?.Invoke(this, a);
+                        break;
+                    }
+                case "reject\0\0\0\0\0\0":
+                    {
+#if NETCOREAPP2_1
+                        var a = await ms.ReadMessage<Reject>((int)h.PayloadSize, h.Checksum);
+#else
+                        var a = pl.ReadFromBuffer<Reject>();
+#endif
+                        await OnReject?.Invoke(this, a);
+                        break;
+                    }
+                case "sendheaders\0":
+                    {
+#if NETCOREAPP2_1
+                        var a = await ms.ReadMessage<SendHeaders>((int)h.PayloadSize, h.Checksum);
+#else
+                        var a = pl.ReadFromBuffer<SendHeaders>();
+#endif
+                        await OnSendHeaders?.Invoke(this, a);
+                        break;
+                    }
+                case "verack\0\0\0\0\0\0":
+                    {
+#if NETCOREAPP2_1
+                        var a = await ms.ReadMessage<VerAck>((int)h.PayloadSize, h.Checksum);
+#else
+                        var a = pl.ReadFromBuffer<VerAck>();
+#endif
+                        await OnVerAck?.Invoke(this, a);
+                        break;
+                    }
+                case "version\0\0\0\0\0":
+                    {
+#if NETCOREAPP2_1
+                        var a = await ms.ReadMessage<bitcoin_lib.P2P.Version>((int)h.PayloadSize, h.Checksum);
+#else
+                        var a = pl.ReadFromBuffer<bitcoin_lib.P2P.Version>();
+#endif
+                        await OnVersion?.Invoke(this, a);
+                        break;
+                    }
+                default:
+                    {
+#if NETCOREAPP2_1
+                        //read the empty message
+                        var a = await ms.ReadMessage<VerAck>((int)h.PayloadSize, h.Checksum);
+#endif
+                        break;
+                    }
             }
         }
 
