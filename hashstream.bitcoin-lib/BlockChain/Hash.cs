@@ -23,7 +23,7 @@ namespace hashstream.bitcoin_lib.BlockChain
         public byte[] NetworkHashBytes => HashBytes.Reverse().ToArray();
 #endif
 
-        public int Size => HashBytes.Length;
+        public int Size => HashBytes != null ? HashBytes.Length : 0;
 
         public Hash()
         {
@@ -43,13 +43,12 @@ namespace hashstream.bitcoin_lib.BlockChain
 
         public Hash(string h)
         {
-            if (h.Length != Size * 2)
+            if (h.Length % 2 != 0)
             {
-                throw new Exception($"Invalid hash length {h.Length} != {Size}");
+                throw new Exception($"Invalid hash length {h.Length}");
             }
 
             HashBytes = h.FromHex();
-            Array.Reverse(HashBytes);
         }
 
 #if NETCOREAPP2_1
@@ -93,15 +92,19 @@ namespace hashstream.bitcoin_lib.BlockChain
         }
 #endif
 
-        public override string ToString()
-        {
-            return HashBytes.ToHex();
-        }
+        public override string ToString() => HashBytes.ToHex();
 
-        public override int GetHashCode()
-        {
-            return ToString().GetHashCode();
-        }
+        public override int GetHashCode() => ToString().GetHashCode();
+        
+        public static implicit operator Hash(byte[] b) => new Hash(b);
+
+        public static implicit operator Hash(string b) => new Hash(b);
+
+        public static implicit operator string(Hash b) => b.ToString();
+
+        public static bool operator ==(Hash a, Hash b) => a.Equals(b);
+
+        public static bool operator !=(Hash a, Hash b) => !a.Equals(b);
 
         public bool Equals(Hash other)
         {
@@ -118,31 +121,6 @@ namespace hashstream.bitcoin_lib.BlockChain
                 }
             }
             return true;
-        }
-
-        public static implicit operator Hash(byte[] b)
-        {
-            return new Hash(b);
-        }
-
-        public static implicit operator Hash(string b)
-        {
-            return new Hash(b);
-        }
-
-        public static implicit operator string(Hash b)
-        {
-            return b.ToString();
-        }
-
-        public static bool operator ==(Hash a, Hash b)
-        {
-            return a.Equals(b);
-        }
-
-        public static bool operator !=(Hash a, Hash b)
-        {
-            return !a.Equals(b);
         }
     }
 }
