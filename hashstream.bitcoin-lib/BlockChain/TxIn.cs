@@ -11,7 +11,7 @@ namespace hashstream.bitcoin_lib.BlockChain
         public WitnessScript WitnessScripts { get; set; }
         public UInt32 Sequence { get; set; } = 0xffffffff;
 
-        public int Size => Outpoint.StaticSize + 4 + Script.Size;
+        public int Size => Previous.Size + 4 + Script.Size;
 
         //this is only used by Tx serializer, witness scripts are at the end of the Tx buffer
         public int NetworkSize => Size + (WitnessScripts != null ? WitnessScripts.Size : 0);
@@ -44,7 +44,7 @@ namespace hashstream.bitcoin_lib.BlockChain
             return ret;
         }
 #else
-        public int ReadFromPayload(byte[] data, int offset)
+        public int ReadFromPayload(byte[] data, int offset = 0)
         {
             var roffset = offset;
             Previous = data.ReadFromBuffer<Outpoint>(ref roffset);

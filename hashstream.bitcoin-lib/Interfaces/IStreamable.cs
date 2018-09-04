@@ -17,7 +17,7 @@ namespace hashstream.bitcoin_lib
         ReadOnlySpan<byte> ReadFromPayload(ReadOnlySpan<byte> data);
 #else
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        int ReadFromPayload(byte[] data, int offset);
+        int ReadFromPayload(byte[] data, int offset = 0);
 #endif
 
         /// <summary>

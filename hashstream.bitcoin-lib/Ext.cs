@@ -6,6 +6,7 @@ using System.Net;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
+using hashstream.bitcoin_lib.BlockChain;
 
 #if NETCOREAPP2_1
 using System.Buffers.Binary;
@@ -189,7 +190,7 @@ namespace hashstream.bitcoin_lib
             BinaryPrimitives.WriteUInt32LittleEndian(dest, obj);
             return dest.Slice(4);
         }
-
+        
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Span<byte> WriteAndSlice(this Span<byte> dest, UInt64 obj)
         {
@@ -347,6 +348,21 @@ namespace hashstream.bitcoin_lib
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CopyAndIncr<T>(this byte[] dest, T src, ref int offset) where T : IStreamable
+        {
+            dest.CopyAndIncr(src.ToArray(), ref offset);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CopyAndIncr<T>(this byte[] dest, T[] src, ref int offset) where T : IStreamable
+        {
+            foreach (var x in src)
+            {
+                dest.CopyAndIncr(x.ToArray(), ref offset);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CopyAndIncr(this byte[] dest, byte[] src, ref int offset, bool reverse = false)
         {
             if (reverse)
@@ -381,6 +397,33 @@ namespace hashstream.bitcoin_lib
         {
             var ret = new T();
             ret.ReadFromPayload(src, 0);
+
+            return ret;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T[] ReadFromBuffer<T>(this byte[] src, int count, ref int offset) where T : IStreamable, new()
+        {
+            var ret = new T[count];
+            for (var x = 0; x < count; x++)
+            {
+                ret[x] = new T();
+                offset += ret[x].ReadFromPayload(src, offset);
+            }
+
+            return ret;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T[] ReadFromBuffer<T>(this byte[] src, int count) where T : IStreamable, new()
+        {
+            var ret = new T[count];
+            var ioffset = 0;
+            for (var x = 0; x < count; x++)
+            {
+                ret[x] = new T();
+                ioffset += ret[x].ReadFromPayload(src, ioffset);
+            }
 
             return ret;
         }

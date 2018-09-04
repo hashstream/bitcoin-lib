@@ -4,9 +4,9 @@ using System.Linq;
 
 namespace hashstream.bitcoin_lib.BlockChain
 {
-    public class Hash : IStreamable
+    public class Hash : IStreamable, IEquatable<Hash>
     {
-        protected byte[] HashBytes { get; set; } = new byte[StaticSize];
+        protected byte[] HashBytes { get; set; }
 
 #if NETCOREAPP2_1
         public Span<byte> NetworkHashBytes
@@ -23,13 +23,11 @@ namespace hashstream.bitcoin_lib.BlockChain
         public byte[] NetworkHashBytes => HashBytes.Reverse().ToArray();
 #endif
 
-        public int Size => StaticSize;
-
-        public static int StaticSize => 32;
+        public int Size => HashBytes.Length;
 
         public Hash()
         {
-
+            HashBytes = new byte[32];
         }
 
         public static Hash Empty()
@@ -39,11 +37,6 @@ namespace hashstream.bitcoin_lib.BlockChain
 
         public Hash(byte[] h)
         {
-            if (h.Length != Size)
-            {
-                throw new Exception($"Invalid hash length {h.Length} != {Size}");
-            }
-
             HashBytes = h;
             Array.Reverse(HashBytes);
         }
@@ -65,7 +58,7 @@ namespace hashstream.bitcoin_lib.BlockChain
             HashBytes = span.ToArray();
             Array.Reverse(HashBytes);
         }
-        
+
         public ReadOnlySpan<byte> ReadFromPayload(ReadOnlySpan<byte> data)
         {
             HashBytes = data.Slice(0, Size).ToArray();
@@ -86,7 +79,7 @@ namespace hashstream.bitcoin_lib.BlockChain
             return ret;
         }
 #else
-        public int ReadFromPayload(byte[] data, int offset)
+        public int ReadFromPayload(byte[] data, int offset = 0)
         {
             Array.Copy(data, offset, HashBytes, 0, HashBytes.Length);
             HashBytes = HashBytes.Reverse().ToArray();
@@ -105,6 +98,28 @@ namespace hashstream.bitcoin_lib.BlockChain
             return HashBytes.ToHex();
         }
 
+        public override int GetHashCode()
+        {
+            return ToString().GetHashCode();
+        }
+
+        public bool Equals(Hash other)
+        {
+            if (other.HashBytes.Length != HashBytes.Length)
+            {
+                return false;
+            }
+
+            for (var x = 0; x < HashBytes.Length; x++)
+            {
+                if (HashBytes[x] != other.HashBytes[x])
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         public static implicit operator Hash(byte[] b)
         {
             return new Hash(b);
@@ -118,6 +133,16 @@ namespace hashstream.bitcoin_lib.BlockChain
         public static implicit operator string(Hash b)
         {
             return b.ToString();
+        }
+
+        public static bool operator ==(Hash a, Hash b)
+        {
+            return a.Equals(b);
+        }
+
+        public static bool operator !=(Hash a, Hash b)
+        {
+            return !a.Equals(b);
         }
     }
 }

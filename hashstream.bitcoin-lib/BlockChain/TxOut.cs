@@ -41,7 +41,7 @@ namespace hashstream.bitcoin_lib.BlockChain
             return ret;
         }
 #else
-        public int ReadFromPayload(byte[] data, int offset)
+        public int ReadFromPayload(byte[] data, int offset = 0)
         {
             var roffset = offset;
             Value = data.ReadUInt64FromBuffer(ref roffset);

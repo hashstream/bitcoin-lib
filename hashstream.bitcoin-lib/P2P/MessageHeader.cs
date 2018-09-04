@@ -9,7 +9,7 @@ namespace hashstream.bitcoin_lib.P2P
 {
     public class MessageHeader : IStreamable, ICommand
     {
-        public UInt32 Magic { get; set; } = 0xd9b4bef9;
+        public UInt32 Magic { get; set; }
         public string Command { get; set; }
         public UInt32 PayloadSize { get; set; }
         public UInt32 Checksum { get; set; }
@@ -19,11 +19,12 @@ namespace hashstream.bitcoin_lib.P2P
         public static int StaticSize => 24;
 
 #if NETCOREAPP2_1
-        public static Memory<byte> ToCommand<T>(T msg) where T : ICommand, IStreamable
+        public static Memory<byte> ToCommand<T>(T msg, ChainParams cp) where T : ICommand, IStreamable
         {
             if (msg != null)
             {
                 var header = new MessageHeader();
+                header.Magic = cp.NetMagic;
                 header.Command = msg.Command;
                 header.PayloadSize = (uint)msg.Size;
 
@@ -78,7 +79,7 @@ namespace hashstream.bitcoin_lib.P2P
             return ret;
         }
 #else
-        public static byte[] ToCommand<T>(T msg) where T : ICommand, IStreamable
+        public static byte[] ToCommand<T>(T msg, ChainParams cp) where T : ICommand, IStreamable
         {
             if (msg != null)
             {
@@ -86,6 +87,7 @@ namespace hashstream.bitcoin_lib.P2P
                 {
                     var mp = msg.ToArray();
                     var header = new MessageHeader();
+                    header.Magic = cp.NetMagic;
                     header.Command = msg.Command;
                     header.PayloadSize = (uint)mp.Length;
 
@@ -106,7 +108,7 @@ namespace hashstream.bitcoin_lib.P2P
             }
         }
 
-        public int ReadFromPayload(byte[] data, int offset)
+        public int ReadFromPayload(byte[] data, int offset = 0)
         {
             var roffset = offset;
 

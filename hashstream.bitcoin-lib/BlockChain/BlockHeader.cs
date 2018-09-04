@@ -1,11 +1,8 @@
-using hashstream.bitcoin_lib.P2P;
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace hashstream.bitcoin_lib.BlockChain
 {
-    public class BlockHeader : IStreamable
+    public class BlockHeader : IStreamable, IHash
     {
         public UInt32 Version { get; set; }
         public Hash PrevBlock { get; set; }
@@ -14,10 +11,8 @@ namespace hashstream.bitcoin_lib.BlockChain
         public UInt32 Target { get; set; }
         public UInt32 Nonce { get; set; }
 
-        public int Size => StaticSize;
-
-        public static int StaticSize => 80;
-
+        public int Size => 80;
+        
         public Hash Hash => new Hash(ToArray().SHA256d());
 
 #if NETCOREAPP2_1
@@ -57,7 +52,7 @@ namespace hashstream.bitcoin_lib.BlockChain
             return dest;
         }
 #else
-        public int ReadFromPayload(byte[] data, int offset)
+        public int ReadFromPayload(byte[] data, int offset = 0)
         {
             var roffset = offset;
 

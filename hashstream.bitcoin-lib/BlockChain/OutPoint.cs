@@ -8,9 +8,7 @@ namespace hashstream.bitcoin_lib.BlockChain
         public Hash Hash { get; set; }
         public UInt32 Index { get; set; }
 
-        public int Size => StaticSize;
-
-        public static int StaticSize => Hash.StaticSize + 4;
+        public int Size => Hash.Size + 4;
 
 #if NETCOREAPP2_1
         public ReadOnlySpan<byte> ReadFromPayload(ReadOnlySpan<byte> data)
@@ -37,7 +35,7 @@ namespace hashstream.bitcoin_lib.BlockChain
             return ret;
         }
 #else
-        public int ReadFromPayload(byte[] data, int offset)
+        public int ReadFromPayload(byte[] data, int offset = 0)
         {
             var roffset = offset;
 

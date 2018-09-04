@@ -6,6 +6,7 @@ using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using hashstream.bitcoin_lib.BlockChain;
+using System.Threading;
 
 #if NETCOREAPP2_1
 using System.Buffers;
@@ -16,81 +17,34 @@ namespace hashstream.bitcoin_node_lib
 
     public class BitcoinPeer
     {
+        public ChainParams ChainParams { get; private set; }
         public bool IsInbound { get; private set; }
 
         private Socket Sock { get; set; }
         private NetworkStream Stream { get; set; }
         private Task ReadTask { get; set; }
-        private bool Closing { get; set; }
-        public EndPoint RemoteEndpoint => Sock.RemoteEndPoint;
+        private CancellationTokenSource Cts { get; set; } = new CancellationTokenSource();
+        public IPEndPoint RemoteEndpoint => (IPEndPoint)(Cts.IsCancellationRequested ? default : Sock?.RemoteEndPoint);
 
-        public delegate Task AddrEvent(BitcoinPeer s, Addr a);
-        public delegate Task AlertEvent(BitcoinPeer s, Alert a);
-        public delegate Task FeeFilterEvent(BitcoinPeer s, FeeFilter f);
-        public delegate Task FilterAddEvent(BitcoinPeer s, FilterAdd f);
-        public delegate Task FilterClearEvent(BitcoinPeer s, FilterClear f);
-        public delegate Task FilterLoadEvent(BitcoinPeer s, FilterLoad f);
-        public delegate Task GetAddrEvent(BitcoinPeer s, GetAddr a);
-        public delegate Task GetBlocksEvent(BitcoinPeer s, GetBlocks gb);
-        public delegate Task GetDataEvent(BitcoinPeer s, GetData gd);
-        public delegate Task GetHeadersEvent(BitcoinPeer s, GetHeaders gh);
-        public delegate Task HeadersEvent(BitcoinPeer s, Headers h);
-        public delegate Task InvEvent(BitcoinPeer s, Inv i);
-        public delegate Task MemPoolEvent(BitcoinPeer s, MemPool mp);
-        public delegate Task NotFoundEvent(BitcoinPeer s, NotFound nf);
-        public delegate Task PingEvent(BitcoinPeer s, Ping p);
-        public delegate Task PongEvent(BitcoinPeer s, Pong p);
-        public delegate Task RejectEvent(BitcoinPeer s, Reject r);
-        public delegate Task SendHeadersEvent(BitcoinPeer s, SendHeaders sh);
-        public delegate Task VerAckEvent(BitcoinPeer s, VerAck va);
-        public delegate Task VersionEvent(BitcoinPeer s, bitcoin_lib.P2P.Version v);
-        public delegate Task TxEvent(BitcoinPeer s, Tx v);
+        public delegate Task MessageEvent(BitcoinPeer s, IStreamable a);
+        public delegate void StoppingEvent();
+        public event MessageEvent OnMessage;
+        public event StoppingEvent OnStopping;
 
-        public event AddrEvent OnAddr;
-        public event AlertEvent OnAlert;
-        public event FeeFilterEvent OnFeeFilter;
-        public event FilterAddEvent OnFilterAdd;
-        public event FilterClearEvent OnFilterClear;
-        public event FilterLoadEvent OnFilterLoad;
-        public event GetAddrEvent OnGetAddr;
-        public event GetBlocksEvent OnGetBlocks;
-        public event GetDataEvent OnGetData;
-        public event GetHeadersEvent OnGetHeaders;
-        public event HeadersEvent OnHeaders;
-        public event InvEvent OnInv;
-        public event MemPoolEvent OnMemPool;
-        public event NotFoundEvent OnNotFound;
-        public event PingEvent OnPing;
-        public event PongEvent OnPong;
-        public event RejectEvent OnReject;
-        public event SendHeadersEvent OnSendHeaders;
-        public event VerAckEvent OnVerAck;
-        public event VersionEvent OnVersion;
-        public event TxEvent OnTx;
-
-        public BitcoinPeer(Socket s, bool isInbound = false)
+        public BitcoinPeer(ChainParams cp, Socket s, bool isInbound = false)
         {
+            ChainParams = cp;
             IsInbound = isInbound;
             Sock = s;
             Sock.LingerState.Enabled = false;
             Stream = new NetworkStream(Sock);
         }
-
-        public BitcoinPeer(IPEndPoint ip)
+        
+        public BitcoinPeer(ChainParams cp)
         {
+            ChainParams = cp;
             Sock = new Socket(SocketType.Stream, ProtocolType.Tcp);
             Sock.LingerState.Enabled = false;
-
-            Sock.Connect(ip);
-            Stream = new NetworkStream(Sock);
-        }
-
-        public BitcoinPeer(string ip, int port = 8333)
-        {
-            Sock = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            Sock.LingerState.Enabled = false;
-            Sock.Connect(new IPEndPoint(IPAddress.Parse(ip), port));
-            Stream = new NetworkStream(Sock);
         }
 
         public void Start()
@@ -98,10 +52,73 @@ namespace hashstream.bitcoin_node_lib
             ReadTask = ReadStream();
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="ip"></param>
+        /// <returns></returns>
+        /// <exception cref="NotSupportedException"></exception>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="InvalidOperationException"></exception>
+        /// <exception cref="SocketException"></exception>
+        /// <exception cref="NotSupportedException"></exception>
+        /// <exception cref="ObjectDisposedException"></exception>
+        /// <exception cref="System.Security.SecurityException"></exception>
+        /// <exception cref="System.IO.IOException"></exception>
+        public async Task ConnectAsync(IPEndPoint ip)
+        {
+            await ConnectAsyncInternal(ip);
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="ip"></param>
+        /// <param name="port"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        /// <exception cref="FormatException"></exception>
+        /// 
+        /// <exception cref="NotSupportedException"></exception>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="InvalidOperationException"></exception>
+        /// <exception cref="SocketException"></exception>
+        /// <exception cref="NotSupportedException"></exception>
+        /// <exception cref="ObjectDisposedException"></exception>
+        /// <exception cref="System.Security.SecurityException"></exception>
+        /// <exception cref="System.IO.IOException"></exception>
+        public async Task ConnectAsync(string ip, int port = 8333)
+        {
+            await ConnectAsyncInternal(new IPEndPoint(IPAddress.Parse(ip), port));
+        }
+        
+        private async Task ConnectAsyncInternal(IPEndPoint ip)
+        {
+#if NETCOREAPP2_1
+            await Sock.ConnectAsync(ip);
+#else
+            var mre = new TaskCompletionSource<bool>();
+            var sca = new SocketAsyncEventArgs();
+            sca.Completed += (s, e) =>
+            {
+                mre.SetResult(true);
+            };
+
+            if (Sock.ConnectAsync(sca))
+            {
+                await mre.Task;
+            }
+#endif
+            Stream = new NetworkStream(Sock);
+        }
 
         public void Stop()
         {
-            Closing = true;
+            OnStopping?.Invoke();
+
+            Cts.Cancel();
             Stream.Close();
             Sock.Close();
 
@@ -117,13 +134,13 @@ namespace hashstream.bitcoin_node_lib
             var hdata = new byte[MessageHeader.StaticSize];
 #endif
 
-            while (!Closing)
+            while (!Cts.IsCancellationRequested)
             {
                 try
                 {
                     //try to read a header 
 #if NETCOREAPP2_1
-                    var h = await mstream.ReadMessage<MessageHeader>(MessageHeader.StaticSize);
+                    var h = await mstream.ReadMessage<MessageHeader>(MessageHeader.StaticSize, Cts.Token);
                     if(h == default)
                     {
                         Stop();
@@ -172,254 +189,279 @@ namespace hashstream.bitcoin_node_lib
         private async Task HandleCommand(MessageHeader h, byte[] pl)
 #endif
         {
-            Console.WriteLine($"Got cmd: {h.Command}");
+            IStreamable cmd = null;
 
-            switch (h.Command)
+            switch (h.Command.TrimEnd('\0'))
             {
-                case "addr\0\0\0\0\0\0\0\0":
+                case "addr":
                     {
 #if NETCOREAPP2_1
-                        var a = await ms.ReadMessage<Addr>((int)h.PayloadSize, h.Checksum);
+                        cmd = await ms.ReadMessage<Addr>((int)h.PayloadSize, Cts.Token, h.Checksum);
 #else
-                        var a = pl.ReadFromBuffer<Addr>();
+                        cmd = pl.ReadFromBuffer<Addr>();
 #endif
-                        await OnAddr?.Invoke(this, a);
                         break;
                     }
-                case "alert\0\0\0\0\0\0\0":
+                case "alert":
                     {
 #if NETCOREAPP2_1
-                        var a = await ms.ReadMessage<Alert>((int)h.PayloadSize, h.Checksum);
+                        cmd = await ms.ReadMessage<Alert>((int)h.PayloadSize, Cts.Token, h.Checksum);
 #else
-                        var a = pl.ReadFromBuffer<Alert>();
+                        cmd = pl.ReadFromBuffer<Alert>();
 #endif
-                        await OnAlert?.Invoke(this, a);
                         break;
                     }
-                case "feefilter\0\0\0":
+                case "feefilter":
                     {
 #if NETCOREAPP2_1
-                        var a = await ms.ReadMessage<FeeFilter>((int)h.PayloadSize, h.Checksum);
+                        cmd = await ms.ReadMessage<FeeFilter>((int)h.PayloadSize, Cts.Token, h.Checksum);
 #else
-                        var a = pl.ReadFromBuffer<FeeFilter>();
+                        cmd = pl.ReadFromBuffer<FeeFilter>();
 #endif
-                        await OnFeeFilter?.Invoke(this, a);
                         break;
                     }
-                case "filteradd\0\0\0":
+                case "filteradd":
                     {
 #if NETCOREAPP2_1
-                        var a = await ms.ReadMessage<FilterAdd>((int)h.PayloadSize, h.Checksum);
+                        cmd = await ms.ReadMessage<FilterAdd>((int)h.PayloadSize, Cts.Token, h.Checksum);
 #else
-                        var a = pl.ReadFromBuffer<FilterAdd>();
+                        cmd = pl.ReadFromBuffer<FilterAdd>();
 #endif
-                        await OnFilterAdd?.Invoke(this, a);
                         break;
                     }
-                case "filterclear\0":
+                case "filterclear":
                     {
 #if NETCOREAPP2_1
-                        var a = await ms.ReadMessage<FilterClear>((int)h.PayloadSize, h.Checksum);
+                        cmd = await ms.ReadMessage<FilterClear>((int)h.PayloadSize, Cts.Token, h.Checksum);
 #else
-                        var a = pl.ReadFromBuffer<FilterClear>();
+                        cmd = pl.ReadFromBuffer<FilterClear>();
 #endif
-                        await OnFilterClear?.Invoke(this, a);
                         break;
                     }
-                case "filterload\0\0":
+                case "filterload":
                     {
 #if NETCOREAPP2_1
-                        var a = await ms.ReadMessage<FilterLoad>((int)h.PayloadSize, h.Checksum);
+                        cmd = await ms.ReadMessage<FilterLoad>((int)h.PayloadSize, Cts.Token, h.Checksum);
 #else
-                        var a = pl.ReadFromBuffer<FilterLoad>();
+                        cmd = pl.ReadFromBuffer<FilterLoad>();
 #endif
-                        await OnFilterLoad?.Invoke(this, a);
                         break;
                     }
-                case "getaddr\0\0\0\0\0":
+                case "getaddr":
                     {
 #if NETCOREAPP2_1
-                        var a = await ms.ReadMessage<GetAddr>((int)h.PayloadSize, h.Checksum);
+                        cmd = await ms.ReadMessage<GetAddr>((int)h.PayloadSize, Cts.Token, h.Checksum);
 #else
-                        var a = pl.ReadFromBuffer<GetAddr>();
+                        cmd = pl.ReadFromBuffer<GetAddr>();
 #endif
-                        await OnGetAddr?.Invoke(this, a);
                         break;
                     }
-                case "getblocks\0\0\0":
+                case "getblocks":
                     {
 #if NETCOREAPP2_1
-                        var a = await ms.ReadMessage<GetBlocks>((int)h.PayloadSize, h.Checksum);
+                        cmd = await ms.ReadMessage<GetBlocks>((int)h.PayloadSize, Cts.Token, h.Checksum);
 #else
-                        var a = pl.ReadFromBuffer<GetBlocks>();
+                        cmd = pl.ReadFromBuffer<GetBlocks>();
 #endif
-                        await OnGetBlocks?.Invoke(this, a);
                         break;
                     }
-                case "getdata\0\0\0\0\0":
+                case "getdata":
                     {
 #if NETCOREAPP2_1
-                        var a = await ms.ReadMessage<GetData>((int)h.PayloadSize, h.Checksum);
+                        cmd = await ms.ReadMessage<GetData>((int)h.PayloadSize, Cts.Token, h.Checksum);
 #else
-                        var a = pl.ReadFromBuffer<GetData>();
+                        cmd = pl.ReadFromBuffer<GetData>();
 #endif
-                        await OnGetData?.Invoke(this, a);
                         break;
                     }
-                case "getheaders\0\0":
+                case "getheaders":
                     {
 #if NETCOREAPP2_1
-                        var a = await ms.ReadMessage<GetHeaders>((int)h.PayloadSize, h.Checksum);
+                        cmd = await ms.ReadMessage<GetHeaders>((int)h.PayloadSize, Cts.Token, h.Checksum);
 #else
-                        var a = pl.ReadFromBuffer<GetHeaders>();
+                        cmd = pl.ReadFromBuffer<GetHeaders>();
 #endif
-                        await OnGetHeaders?.Invoke(this, a);
                         break;
                     }
-                case "headers\0\0\0\0\0":
+                case "headers":
                     {
 #if NETCOREAPP2_1
-                        var a = await ms.ReadMessage<Headers>((int)h.PayloadSize, h.Checksum);
+                        cmd = await ms.ReadMessage<Headers>((int)h.PayloadSize, Cts.Token, h.Checksum);
 #else
-                        var a = pl.ReadFromBuffer<Headers>();
+                        cmd = pl.ReadFromBuffer<Headers>();
 #endif
-                        await OnHeaders?.Invoke(this, a);
                         break;
                     }
-                case "inv\0\0\0\0\0\0\0\0\0":
+                case "inv":
                     {
 #if NETCOREAPP2_1
-                        var a = await ms.ReadMessage<Inv>((int)h.PayloadSize, h.Checksum);
+                        cmd = await ms.ReadMessage<Inv>((int)h.PayloadSize, Cts.Token, h.Checksum);
 #else
-                        var a = pl.ReadFromBuffer<Inv>();
+                        cmd = pl.ReadFromBuffer<Inv>();
 #endif
-                        await OnInv?.Invoke(this, a);
                         break;
                     }
-                case "mempool\0\0\0\0\0":
+                case "mempool":
                     {
 #if NETCOREAPP2_1
-                        var a = await ms.ReadMessage<MemPool>((int)h.PayloadSize, h.Checksum);
+                        cmd = await ms.ReadMessage<MemPool>((int)h.PayloadSize, Cts.Token, h.Checksum);
 #else
-                        var a = pl.ReadFromBuffer<MemPool>();
+                        cmd = pl.ReadFromBuffer<MemPool>();
 #endif
-                        await OnMemPool?.Invoke(this, a);
                         break;
                     }
-                case "notfound\0\0\0\0":
+                case "notfound":
                     {
 #if NETCOREAPP2_1
-                        var a = await ms.ReadMessage<NotFound>((int)h.PayloadSize, h.Checksum);
+                        cmd = await ms.ReadMessage<NotFound>((int)h.PayloadSize, Cts.Token, h.Checksum);
 #else
-                        var a = pl.ReadFromBuffer<NotFound>();
+                        cmd = pl.ReadFromBuffer<NotFound>();
 #endif
-                        await OnNotFound?.Invoke(this, a);
                         break;
                     }
-                case "ping\0\0\0\0\0\0\0\0":
+                case "ping":
                     {
 #if NETCOREAPP2_1
-                        var a = await ms.ReadMessage<Ping>((int)h.PayloadSize, h.Checksum);
+                        cmd = await ms.ReadMessage<Ping>((int)h.PayloadSize, Cts.Token, h.Checksum);
 #else
-                        var a = pl.ReadFromBuffer<Ping>();
+                        cmd = pl.ReadFromBuffer<Ping>();
 #endif
-                        await OnPing?.Invoke(this, a);
                         break;
                     }
-                case "pong\0\0\0\0\0\0\0\0":
+                case "pong":
                     {
 #if NETCOREAPP2_1
-                        var a = await ms.ReadMessage<Pong>((int)h.PayloadSize, h.Checksum);
+                        cmd = await ms.ReadMessage<Pong>((int)h.PayloadSize, Cts.Token, h.Checksum);
 #else
-                        var a = pl.ReadFromBuffer<Pong>();
+                        cmd = pl.ReadFromBuffer<Pong>();
 #endif
-                        await OnPong?.Invoke(this, a);
                         break;
                     }
-                case "reject\0\0\0\0\0\0":
+                case "reject":
                     {
 #if NETCOREAPP2_1
-                        var a = await ms.ReadMessage<Reject>((int)h.PayloadSize, h.Checksum);
+                        cmd = await ms.ReadMessage<Reject>((int)h.PayloadSize, Cts.Token, h.Checksum);
 #else
-                        var a = pl.ReadFromBuffer<Reject>();
+                        cmd = pl.ReadFromBuffer<Reject>();
 #endif
-                        await OnReject?.Invoke(this, a);
                         break;
                     }
-                case "sendheaders\0":
+                case "sendheaders":
                     {
 #if NETCOREAPP2_1
-                        var a = await ms.ReadMessage<SendHeaders>((int)h.PayloadSize, h.Checksum);
+                        cmd = await ms.ReadMessage<SendHeaders>((int)h.PayloadSize, Cts.Token, h.Checksum);
 #else
-                        var a = pl.ReadFromBuffer<SendHeaders>();
+                        cmd = pl.ReadFromBuffer<SendHeaders>();
 #endif
-                        await OnSendHeaders?.Invoke(this, a);
                         break;
                     }
-                case "verack\0\0\0\0\0\0":
+                case "verack":
                     {
 #if NETCOREAPP2_1
-                        var a = await ms.ReadMessage<VerAck>((int)h.PayloadSize, h.Checksum);
+                        cmd = await ms.ReadMessage<VerAck>((int)h.PayloadSize, Cts.Token, h.Checksum);
 #else
-                        var a = pl.ReadFromBuffer<VerAck>();
+                        cmd = pl.ReadFromBuffer<VerAck>();
 #endif
-                        await OnVerAck?.Invoke(this, a);
                         break;
                     }
-                case "version\0\0\0\0\0":
+                case "version":
                     {
 #if NETCOREAPP2_1
-                        var a = await ms.ReadMessage<bitcoin_lib.P2P.Version>((int)h.PayloadSize, h.Checksum);
+                        cmd = await ms.ReadMessage<bitcoin_lib.P2P.Version>((int)h.PayloadSize, Cts.Token, h.Checksum);
 #else
-                        var a = pl.ReadFromBuffer<bitcoin_lib.P2P.Version>();
+                        cmd = pl.ReadFromBuffer<bitcoin_lib.P2P.Version>();
 #endif
-                        await OnVersion?.Invoke(this, a);
                         break;
                     }
-                case "tx\0\0\0\0\0\0\0\0\0\0":
+                case "tx":
                     {
 #if NETCOREAPP2_1
-                        var a = await ms.ReadMessage<Tx>((int)h.PayloadSize, h.Checksum);
+                        cmd = await ms.ReadMessage<Tx>((int)h.PayloadSize, Cts.Token, h.Checksum);
 #else
-                        var a = pl.ReadFromBuffer<Tx>();
+                        cmd = pl.ReadFromBuffer<Tx>();
 #endif
-                        await OnTx?.Invoke(this, a);
+                        break;
+                    }
+                case "block":
+                    {
+#if NETCOREAPP2_1
+                        cmd = await ms.ReadMessage<Block>((int)h.PayloadSize, Cts.Token, h.Checksum);
+#else
+                        cmd = pl.ReadFromBuffer<Block>();
+#endif
+                        break;
+                    }
+                case "sendcmpct":
+                    {
+#if NETCOREAPP2_1
+                        cmd = await ms.ReadMessage<SendCMPCT>((int)h.PayloadSize, Cts.Token, h.Checksum);
+#else
+                        cmd = pl.ReadFromBuffer<SendCMPCT>();
+#endif
+                        break;
+                    }
+                case "cmpctblock":
+                    {
+#if NETCOREAPP2_1
+                        cmd = await ms.ReadMessage<CMPCTBlock>((int)h.PayloadSize, Cts.Token, h.Checksum);
+#else
+                        cmd = pl.ReadFromBuffer<CMPCTBlock>();
+#endif
+                        break;
+                    }
+                case "getblocktxn":
+                    {
+#if NETCOREAPP2_1
+                        cmd = await ms.ReadMessage<GetBlockTxn>((int)h.PayloadSize, Cts.Token, h.Checksum);
+#else
+                        cmd = pl.ReadFromBuffer<GetBlockTxn>();
+#endif
+                        break;
+                    }
+                case "blocktxn":
+                    {
+#if NETCOREAPP2_1
+                        cmd = await ms.ReadMessage<BlockTxn>((int)h.PayloadSize, Cts.Token, h.Checksum);
+#else
+                        cmd = pl.ReadFromBuffer<BlockTxn>();
+#endif
                         break;
                     }
                 default:
                     {
+                        Console.WriteLine($"Got unknown cmd: {h.Command}");
 #if NETCOREAPP2_1
                         //read the empty message
-                        var a = await ms.ReadMessage<VerAck>((int)h.PayloadSize, h.Checksum);
+                        cmd = await ms.ReadMessage<VerAck>((int)h.PayloadSize, Cts.Token, h.Checksum);
 #endif
                         break;
                     }
+            }
+
+            if(cmd != default)
+            {
+                await OnMessage?.Invoke(this, cmd);
+            }
+            else
+            {
+                Stop();
             }
         }
 
         public async Task WriteMessage<T>(T msg) where T : IStreamable, ICommand
         {
 #if NETCOREAPP2_1
-            var dt = MessageHeader.ToCommand(msg);
-            if (!dt.IsEmpty)
+            var dt = MessageHeader.ToCommand(msg, ChainParams);
+            if (!dt.IsEmpty && !Cts.IsCancellationRequested)
             {
-                Console.WriteLine($"Sent cmd: {msg.Command}");
                 await Stream.WriteAsync(dt);
             }
-            else
-            {
-                Console.WriteLine("GOT NULL MSG");
-            }
 #else
-            var dt = MessageHeader.ToCommand(msg);
-            if (dt != null)
+            var dt = MessageHeader.ToCommand(msg, ChainParams);
+            if (dt != null && !Cts.IsCancellationRequested)
             {
                 Console.WriteLine($"Sent cmd: {msg.Command}");
                 await Stream.WriteAsync(dt, 0, dt.Length);
-            }
-            else
-            {
-                Console.WriteLine("GOT NULL MSG");
             }
 #endif
         }

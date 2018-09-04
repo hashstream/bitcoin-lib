@@ -108,7 +108,7 @@ namespace hashstream.bitcoin_lib.BlockChain
             return ret;
         }
 #else
-        public int ReadFromPayload(byte[] header, int offset)
+        public int ReadFromPayload(byte[] header, int offset = 0)
         {
             var b1 = header[offset];
 

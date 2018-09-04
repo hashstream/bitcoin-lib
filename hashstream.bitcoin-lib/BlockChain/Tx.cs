@@ -1,11 +1,10 @@
-﻿using hashstream.bitcoin_lib.P2P;
-using hashstream.bitcoin_lib.Script;
+﻿using hashstream.bitcoin_lib.Script;
 using System;
 using System.Linq;
 
 namespace hashstream.bitcoin_lib.BlockChain
 {
-    public class Tx : IStreamable
+    public class Tx : IStreamable, IHash
     {
         public static readonly int SERIALIZE_TRANSACTION_NO_WITNESS = 0x40000000;
         public static readonly Int32 CURRENT_VERSION = 2;
@@ -23,7 +22,7 @@ namespace hashstream.bitcoin_lib.BlockChain
 
         public int Size => (Flags != 0 ? 10 : 8) + TxInCount.Size + TxIn.Sum(a => ((Flags & 1) == 1 && AllowWitness ? a.NetworkSize : a.Size)) + TxOutCount.Size + TxOut.Sum(a => a.Size);
 
-        public Hash TxHash => new Hash(ToArray().SHA256d());
+        public Hash Hash => new Hash(ToArray().SHA256d());
 
         public bool HasWitness()
         {
@@ -103,7 +102,7 @@ namespace hashstream.bitcoin_lib.BlockChain
             return dest;
         }
 #else
-        public int ReadFromPayload(byte[] data, int offset)
+        public int ReadFromPayload(byte[] data, int offset = 0)
         {
             var roffset = offset;
 

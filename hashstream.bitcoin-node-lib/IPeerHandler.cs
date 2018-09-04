@@ -1,14 +1,21 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using System.Net;
 using System.Threading.Tasks;
 
 namespace hashstream.bitcoin_node_lib
 {
-    public abstract class PeerHandler
-    {
-        public abstract void Init(BitcoinPeer p, Guid g);
+    public delegate void PeerStoppingEvent(Guid g);
 
-        public abstract Task SendVersion();
+    public interface PeerHandler
+    {
+        event PeerStoppingEvent OnStop;
+
+        void Init<T>(BitcoinNode<T> node, BitcoinPeer peer, Guid id) where T : PeerHandler, new();
+
+        IPEndPoint RemoteEndpoint { get; }
+
+        Task SendVersion();
+
+        void Disconnect();
     }
 }

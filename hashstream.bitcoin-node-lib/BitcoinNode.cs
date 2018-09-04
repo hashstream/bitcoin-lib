@@ -1,4 +1,5 @@
-﻿using hashstream.bitcoin_lib.P2P;
+﻿using hashstream.bitcoin_lib;
+using hashstream.bitcoin_lib.P2P;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -15,15 +16,6 @@ namespace hashstream.bitcoin_node_lib
         private Task AcceptTask { get; set; }
         private Task CheckPeerListTask { get; set; }
         private CancellationTokenSource Cts { get; set; }
-        private List<string> DNSSeeds { get; set; } = new List<string>()
-        {
-            "seed.bitcoin.sipa.be",
-            "dnsseed.bluematt.me",
-            "dnsseed.bitcoin.dashjr.org",
-            "seed.bitcoinstats.com",
-            "seed.bitcoin.jonasschnelli.ch",
-            "seed.btc.petertodd.org"
-        };
 
         private ConcurrentDictionary<Guid, T> Peers { get; set; } = new ConcurrentDictionary<Guid, T>();
 
@@ -32,14 +24,13 @@ namespace hashstream.bitcoin_node_lib
         public delegate void PeerDisconnected(T np);
 
         public event Log OnLog;
-        public event PeerConnected OnPeerConnected;
-        public event PeerDisconnected OnPeerDisconnected;
 
-        public static string UserAgent { get; set; } = "/hashstream-node:0.1/";
+        public ChainParams ChainParams { get; private set; }
 
-        public BitcoinNode(IPEndPoint ip = null)
+        public BitcoinNode(ChainParams cp, IPEndPoint ip = null)
         {
-            if(ip == null)
+            ChainParams = cp;
+            if (ip == null)
             {
                 ip = new IPEndPoint(IPAddress.Any, 8333);
             }
@@ -89,9 +80,14 @@ namespace hashstream.bitcoin_node_lib
                 {
                     var id = Guid.NewGuid();
                     var np = new T();
-                    np.Init(new BitcoinPeer(ns, true), id);
+                    np.OnStop += Node_OnStop;
+                    np.Init(this, new BitcoinPeer(ChainParams, ns, true), id);
 
-                    Peers.TryAdd(id, np);
+                    if(Peers.TryAdd(id, np))
+                    {
+                        OnLog?.Invoke($"New peer added: {np.RemoteEndpoint}!");
+                    }
+                    
                 }
             }
         }
@@ -105,19 +101,42 @@ namespace hashstream.bitcoin_node_lib
             }
         }
 
-        public async Task AddPeer(IPEndPoint ip)
+        /// <summary>
+        /// Adds a new peer to the node, all exceptions are thrown back from connection errors.
+        /// </summary>
+        /// <param name="ip"></param>
+        /// <param name="cp"></param>
+        /// <returns></returns>
+        /// <exception cref="SocketException"></exception>
+        public async Task AddPeer(IPEndPoint ip, ChainParams cp = null)
         {
             var id = Guid.NewGuid();
+
             var np = new T();
-            np.Init(new BitcoinPeer(ip), id);
+            np.OnStop += Node_OnStop;
+            var nc = new BitcoinPeer(cp ?? ChainParams);
+            await nc.ConnectAsync(ip);
+
+            np.Init(this, nc, id);
             await np.SendVersion();
 
-            Peers.TryAdd(id, np);
+            if(Peers.TryAdd(id, np))
+            {
+                OnLog?.Invoke($"New peer added: {np.RemoteEndpoint}!");
+            }
+        }
+
+        private void Node_OnStop(Guid g)
+        {
+            if(Peers.TryRemove(g, out T peer))
+            {
+                OnLog?.Invoke($"Peer disconnected: {peer.RemoteEndpoint}");
+            }
         }
 
         public IEnumerable<T> EnumeratePeers()
         {
-            foreach(var node in Peers)
+            foreach (var node in Peers)
             {
                 yield return node.Value;
             }

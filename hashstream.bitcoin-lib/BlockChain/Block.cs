@@ -8,13 +8,13 @@ using System.Buffers.Binary;
 
 namespace hashstream.bitcoin_lib.BlockChain
 {
-    public class Block : IStreamable, ICommand
+    public class Block : IStreamable, ICommand, IHash
     {
         public BlockHeader Header { get; set; }
         public VarInt TxnCount => Txns?.Length;
         public Tx[] Txns { get; set; } = new Tx[0];
 
-        public int Size => BlockHeader.StaticSize + TxnCount.Size + Txns.Sum(a => a.Size);
+        public int Size => Header.Size + TxnCount.Size + Txns.Sum(a => a.Size);
 
         public Hash Hash => Header.Hash;
 
@@ -97,7 +97,7 @@ namespace hashstream.bitcoin_lib.BlockChain
             return ret;
         }
 #else
-        public int ReadFromPayload(byte[] data, int offset)
+        public int ReadFromPayload(byte[] data, int offset = 0)
         {
             var roffset = offset;
 

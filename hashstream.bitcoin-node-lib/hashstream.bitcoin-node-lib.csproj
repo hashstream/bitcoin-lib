@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFrameworks>netcoreapp2.1;net461</TargetFrameworks>
     <RootNamespace>hashstream.bitcoin_node_lib</RootNamespace>
+    <GenerateAppxPackageOnBuild>true</GenerateAppxPackageOnBuild>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 

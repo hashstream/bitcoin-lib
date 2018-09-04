@@ -11,6 +11,10 @@
     <Product>Hashstream Bitcoin Lib</Product>
     <Description>Hashstream Bitcoin Lib</Description>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CH.SipHash" Version="1.0.2" />
+  </ItemGroup>
   
   <ItemGroup>
     <Reference Include="System">

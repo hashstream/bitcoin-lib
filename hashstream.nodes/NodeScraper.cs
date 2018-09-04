@@ -1,4 +1,5 @@
-﻿using hashstream.bitcoin_lib.P2P;
+﻿using hashstream.bitcoin_lib;
+using hashstream.bitcoin_lib.P2P;
 using hashstream.bitcoin_node_lib;
 using MaxMind.GeoIP2;
 using StackExchange.Redis;
@@ -29,7 +30,7 @@ namespace hashstream.nodes
         private BufferBlock<IPEndPoint> NewNodeQueue { get; set; } = new BufferBlock<IPEndPoint>();
 
         private Task NewNodeWorkerTask { get; set; }
-        
+                
         private static List<string> DNSSeeds { get; set; } = new List<string>()
         {
             "seed.bitcoin.sipa.be",
@@ -166,6 +167,8 @@ namespace hashstream.nodes
         private bitcoin_lib.P2P.Version Ver { get; set; }
         private bool GotVersion { get; set; }
 
+        private ChainParams ChainParams { get; set; } = new ChainParams();
+
         public Node(ConnectionMultiplexer redis, Action<IPEndPoint> nq, DatabaseReader geo, IPEndPoint ip)
         {
             IP = ip;
@@ -178,7 +181,7 @@ namespace hashstream.nodes
             Ver.StartHeight = 0;
             Ver.TransIp = Ver.RecvIp = IPAddress.None;
             Ver.TransPort = Ver.RecvPort = 0;
-            Ver.TransServices = Ver.RecvServices = (UInt64)Services.Unknown;
+            Ver.TransServices = Ver.RecvServices = (UInt64)Services.NODE_NONE;
             Ver.Relay = false; //no need for them to send new tx / blocks since we only want to map the network
 
             QueueNewNode = nq;
@@ -209,11 +212,8 @@ namespace hashstream.nodes
 #else
                 await ns.ConnectAsync(IP);
 #endif
-                Peer = new BitcoinPeer(ns);
-                Peer.OnVerAck += P_OnVerAck;
-                Peer.OnVersion += P_OnVersion;
-                Peer.OnAddr += P_OnAddr;
-                Peer.OnPing += P_OnPing;
+                Peer = new BitcoinPeer(ChainParams, ns);
+                Peer.OnMessage += Peer_OnMessage;
                 Peer.Start();
 
                 Ver.Timestamp = (UInt64)DateTimeOffset.Now.ToUnixTimeSeconds();
@@ -236,6 +236,48 @@ namespace hashstream.nodes
             {
                 //Console.WriteLine($"Connection failed {ex.Message}, setting as bad node.");
                 await SetAsBadNode();
+            }
+        }
+
+        private async Task Peer_OnMessage(BitcoinPeer s, IStreamable msg)
+        {
+            switch (msg)
+            {
+                case Addr a:
+                    {
+                        foreach (var ip in a.Ips)
+                        {
+                            var ep = new IPEndPoint(ip.Ip.MapToIPv6(), ip.Port);
+                            var epb = ep.ToByteArray();
+                            if (!await db.SetContainsAsync("hs:nodes:good-nodes", epb) && !await db.SetContainsAsync("hs:nodes:bad-nodes", epb))
+                            {
+                                QueueNewNode(ep);
+                            }
+                        }
+                        break;
+                    }
+                case Ping a:
+                    {
+                        var pong = new Pong();
+                        pong.Nonce = a.Nonce;
+
+                        await s.WriteMessage(pong);
+                        break;
+                    }
+                case bitcoin_lib.P2P.Version a:
+                    {
+                        GotVersion = true;
+
+                        //send verack and log
+                        await SetNodeDetails(a);
+
+                        var va = new VerAck();
+                        await s.WriteMessage(va);
+
+                        var ga = new GetAddr();
+                        await s.WriteMessage(ga);
+                        break;
+                    }
             }
         }
 
@@ -311,46 +353,6 @@ namespace hashstream.nodes
             }
 
             return ret;
-        }
-
-        private async Task P_OnAddr(BitcoinPeer s, Addr a)
-        {
-            foreach (var ip in a.Ips)
-            {
-                var ep = new IPEndPoint(ip.Ip.MapToIPv6(), ip.Port);
-                var epb = ep.ToByteArray();
-                if (!await db.SetContainsAsync("hs:nodes:good-nodes", epb) && !await db.SetContainsAsync("hs:nodes:bad-nodes", epb))
-                {
-                    QueueNewNode(ep);
-                }
-            }
-        }
-
-        private async Task P_OnPing(BitcoinPeer s, Ping p)
-        {
-            var pong = new Pong();
-            pong.Nonce = p.Nonce;
-
-            await s.WriteMessage(pong);
-        }
-
-        private async Task P_OnVersion(BitcoinPeer s, bitcoin_lib.P2P.Version v)
-        {
-            GotVersion = true;
-
-            //send verack and log
-            await SetNodeDetails(v);
-
-            var va = new VerAck();
-            await s.WriteMessage(va);
-
-            var ga = new GetAddr();
-            await s.WriteMessage(ga);
-        }
-
-        private Task P_OnVerAck(BitcoinPeer s, VerAck va)
-        {
-            return Task.CompletedTask;
         }
     }
 
